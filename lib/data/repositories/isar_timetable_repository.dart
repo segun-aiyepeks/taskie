@@ -1,6 +1,6 @@
 import 'package:isar/isar.dart';
-import '../../data/models/timetable_entry.dart';
-import '../../data/repositories/timetable_repository.dart';
+import '../models/timetable_entry.dart';
+import 'timetable_repository.dart';
 
 class IsarTimetableRepository implements TimetableRepository {
   final Isar _isar;
@@ -8,20 +8,22 @@ class IsarTimetableRepository implements TimetableRepository {
 
   @override
   Future<int> saveEntry(TimetableEntry entry) =>
-      _isar.writeTxn(() => _isar.timetableEntrys.put(entry)); // ← put not push
+      _isar.writeTxn(() => _isar.timetableEntrys.put(entry));
 
   @override
-  Future<void> deleteEntry(int id) async {
-    // ← completely rewritten: writeTxn + delete
-    await _isar.writeTxn(() => _isar.timetableEntrys.delete(id));
-  }
+  Future<void> deleteEntry(int id) =>
+      _isar.writeTxn(() => _isar.timetableEntrys.delete(id));
+
+  @override
+  Future<TimetableEntry?> getEntryById(int id) =>
+      _isar.timetableEntrys.get(id);
 
   @override
   Stream<List<TimetableEntry>> watchEntriesForDay(int dayOfWeek) {
-    // ← kept on one line, no line break inside the method call
+    // Isar supports querying inside List fields with ElementEqualTo
     return _isar.timetableEntrys
         .filter()
-        .dayOfTheWeekEqualTo(dayOfWeek)
+        .daysOfWeekElementEqualTo(dayOfWeek)
         .sortByStartMinutes()
         .watch(fireImmediately: true);
   }
@@ -30,8 +32,7 @@ class IsarTimetableRepository implements TimetableRepository {
   Stream<List<TimetableEntry>> watchAllEntries() {
     return _isar.timetableEntrys
         .where()
-        .sortByDayOfTheWeek()           // ← capital O and W
-        .thenByStartMinutes()
+        .sortByStartMinutes()
         .watch(fireImmediately: true);
   }
 }

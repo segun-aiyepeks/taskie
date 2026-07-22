@@ -27,53 +27,63 @@ const TimetableEntrySchema = CollectionSchema(
       name: r'createdAt',
       type: IsarType.dateTime,
     ),
-    r'dayOfTheWeek': PropertySchema(
+    r'daysLabel': PropertySchema(
       id: 2,
-      name: r'dayOfTheWeek',
-      type: IsarType.long,
+      name: r'daysLabel',
+      type: IsarType.string,
+    ),
+    r'daysOfWeek': PropertySchema(
+      id: 3,
+      name: r'daysOfWeek',
+      type: IsarType.longList,
     ),
     r'durationLabel': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'durationLabel',
       type: IsarType.string,
     ),
     r'durationMinutes': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'durationMinutes',
       type: IsarType.long,
     ),
     r'endLabel': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'endLabel',
       type: IsarType.string,
     ),
     r'endMinutes': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'endMinutes',
       type: IsarType.long,
     ),
+    r'isHighPriority': PropertySchema(
+      id: 8,
+      name: r'isHighPriority',
+      type: IsarType.bool,
+    ),
     r'note': PropertySchema(
-      id: 7,
+      id: 9,
       name: r'note',
       type: IsarType.string,
     ),
     r'startLabel': PropertySchema(
-      id: 8,
+      id: 10,
       name: r'startLabel',
       type: IsarType.string,
     ),
     r'startMinutes': PropertySchema(
-      id: 9,
+      id: 11,
       name: r'startMinutes',
       type: IsarType.long,
     ),
     r'timeRange': PropertySchema(
-      id: 10,
+      id: 12,
       name: r'timeRange',
       type: IsarType.string,
     ),
     r'title': PropertySchema(
-      id: 11,
+      id: 13,
       name: r'title',
       type: IsarType.string,
     )
@@ -83,21 +93,7 @@ const TimetableEntrySchema = CollectionSchema(
   deserialize: _timetableEntryDeserialize,
   deserializeProp: _timetableEntryDeserializeProp,
   idName: r'id',
-  indexes: {
-    r'dayOfTheWeek': IndexSchema(
-      id: -8208686421650416574,
-      name: r'dayOfTheWeek',
-      unique: false,
-      replace: false,
-      properties: [
-        IndexPropertySchema(
-          name: r'dayOfTheWeek',
-          type: IndexType.value,
-          caseSensitive: false,
-        )
-      ],
-    )
-  },
+  indexes: {},
   links: {},
   embeddedSchemas: {},
   getId: _timetableEntryGetId,
@@ -113,6 +109,8 @@ int _timetableEntryEstimateSize(
 ) {
   var bytesCount = offsets.last;
   bytesCount += 3 + object.colorHex.length * 3;
+  bytesCount += 3 + object.daysLabel.length * 3;
+  bytesCount += 3 + object.daysOfWeek.length * 8;
   bytesCount += 3 + object.durationLabel.length * 3;
   bytesCount += 3 + object.endLabel.length * 3;
   {
@@ -135,16 +133,18 @@ void _timetableEntrySerialize(
 ) {
   writer.writeString(offsets[0], object.colorHex);
   writer.writeDateTime(offsets[1], object.createdAt);
-  writer.writeLong(offsets[2], object.dayOfTheWeek);
-  writer.writeString(offsets[3], object.durationLabel);
-  writer.writeLong(offsets[4], object.durationMinutes);
-  writer.writeString(offsets[5], object.endLabel);
-  writer.writeLong(offsets[6], object.endMinutes);
-  writer.writeString(offsets[7], object.note);
-  writer.writeString(offsets[8], object.startLabel);
-  writer.writeLong(offsets[9], object.startMinutes);
-  writer.writeString(offsets[10], object.timeRange);
-  writer.writeString(offsets[11], object.title);
+  writer.writeString(offsets[2], object.daysLabel);
+  writer.writeLongList(offsets[3], object.daysOfWeek);
+  writer.writeString(offsets[4], object.durationLabel);
+  writer.writeLong(offsets[5], object.durationMinutes);
+  writer.writeString(offsets[6], object.endLabel);
+  writer.writeLong(offsets[7], object.endMinutes);
+  writer.writeBool(offsets[8], object.isHighPriority);
+  writer.writeString(offsets[9], object.note);
+  writer.writeString(offsets[10], object.startLabel);
+  writer.writeLong(offsets[11], object.startMinutes);
+  writer.writeString(offsets[12], object.timeRange);
+  writer.writeString(offsets[13], object.title);
 }
 
 TimetableEntry _timetableEntryDeserialize(
@@ -156,12 +156,13 @@ TimetableEntry _timetableEntryDeserialize(
   final object = TimetableEntry();
   object.colorHex = reader.readString(offsets[0]);
   object.createdAt = reader.readDateTime(offsets[1]);
-  object.dayOfTheWeek = reader.readLong(offsets[2]);
-  object.endMinutes = reader.readLong(offsets[6]);
+  object.daysOfWeek = reader.readLongList(offsets[3]) ?? [];
+  object.endMinutes = reader.readLong(offsets[7]);
   object.id = id;
-  object.note = reader.readStringOrNull(offsets[7]);
-  object.startMinutes = reader.readLong(offsets[9]);
-  object.title = reader.readString(offsets[11]);
+  object.isHighPriority = reader.readBool(offsets[8]);
+  object.note = reader.readStringOrNull(offsets[9]);
+  object.startMinutes = reader.readLong(offsets[11]);
+  object.title = reader.readString(offsets[13]);
   return object;
 }
 
@@ -177,24 +178,28 @@ P _timetableEntryDeserializeProp<P>(
     case 1:
       return (reader.readDateTime(offset)) as P;
     case 2:
-      return (reader.readLong(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 3:
-      return (reader.readString(offset)) as P;
+      return (reader.readLongList(offset) ?? []) as P;
     case 4:
-      return (reader.readLong(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 5:
-      return (reader.readString(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 6:
-      return (reader.readLong(offset)) as P;
-    case 7:
-      return (reader.readStringOrNull(offset)) as P;
-    case 8:
       return (reader.readString(offset)) as P;
-    case 9:
+    case 7:
       return (reader.readLong(offset)) as P;
+    case 8:
+      return (reader.readBool(offset)) as P;
+    case 9:
+      return (reader.readStringOrNull(offset)) as P;
     case 10:
       return (reader.readString(offset)) as P;
     case 11:
+      return (reader.readLong(offset)) as P;
+    case 12:
+      return (reader.readString(offset)) as P;
+    case 13:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -219,14 +224,6 @@ extension TimetableEntryQueryWhereSort
   QueryBuilder<TimetableEntry, TimetableEntry, QAfterWhere> anyId() {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(const IdWhereClause.any());
-    });
-  }
-
-  QueryBuilder<TimetableEntry, TimetableEntry, QAfterWhere> anyDayOfTheWeek() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(
-        const IndexWhereClause.any(indexName: r'dayOfTheWeek'),
-      );
     });
   }
 }
@@ -297,99 +294,6 @@ extension TimetableEntryQueryWhere
         lower: lowerId,
         includeLower: includeLower,
         upper: upperId,
-        includeUpper: includeUpper,
-      ));
-    });
-  }
-
-  QueryBuilder<TimetableEntry, TimetableEntry, QAfterWhereClause>
-      dayOfTheWeekEqualTo(int dayOfTheWeek) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IndexWhereClause.equalTo(
-        indexName: r'dayOfTheWeek',
-        value: [dayOfTheWeek],
-      ));
-    });
-  }
-
-  QueryBuilder<TimetableEntry, TimetableEntry, QAfterWhereClause>
-      dayOfTheWeekNotEqualTo(int dayOfTheWeek) {
-    return QueryBuilder.apply(this, (query) {
-      if (query.whereSort == Sort.asc) {
-        return query
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'dayOfTheWeek',
-              lower: [],
-              upper: [dayOfTheWeek],
-              includeUpper: false,
-            ))
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'dayOfTheWeek',
-              lower: [dayOfTheWeek],
-              includeLower: false,
-              upper: [],
-            ));
-      } else {
-        return query
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'dayOfTheWeek',
-              lower: [dayOfTheWeek],
-              includeLower: false,
-              upper: [],
-            ))
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'dayOfTheWeek',
-              lower: [],
-              upper: [dayOfTheWeek],
-              includeUpper: false,
-            ));
-      }
-    });
-  }
-
-  QueryBuilder<TimetableEntry, TimetableEntry, QAfterWhereClause>
-      dayOfTheWeekGreaterThan(
-    int dayOfTheWeek, {
-    bool include = false,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IndexWhereClause.between(
-        indexName: r'dayOfTheWeek',
-        lower: [dayOfTheWeek],
-        includeLower: include,
-        upper: [],
-      ));
-    });
-  }
-
-  QueryBuilder<TimetableEntry, TimetableEntry, QAfterWhereClause>
-      dayOfTheWeekLessThan(
-    int dayOfTheWeek, {
-    bool include = false,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IndexWhereClause.between(
-        indexName: r'dayOfTheWeek',
-        lower: [],
-        upper: [dayOfTheWeek],
-        includeUpper: include,
-      ));
-    });
-  }
-
-  QueryBuilder<TimetableEntry, TimetableEntry, QAfterWhereClause>
-      dayOfTheWeekBetween(
-    int lowerDayOfTheWeek,
-    int upperDayOfTheWeek, {
-    bool includeLower = true,
-    bool includeUpper = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IndexWhereClause.between(
-        indexName: r'dayOfTheWeek',
-        lower: [lowerDayOfTheWeek],
-        includeLower: includeLower,
-        upper: [upperDayOfTheWeek],
         includeUpper: includeUpper,
       ));
     });
@@ -591,45 +495,181 @@ extension TimetableEntryQueryFilter
   }
 
   QueryBuilder<TimetableEntry, TimetableEntry, QAfterFilterCondition>
-      dayOfTheWeekEqualTo(int value) {
+      daysLabelEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'dayOfTheWeek',
+        property: r'daysLabel',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<TimetableEntry, TimetableEntry, QAfterFilterCondition>
+      daysLabelGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'daysLabel',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<TimetableEntry, TimetableEntry, QAfterFilterCondition>
+      daysLabelLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'daysLabel',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<TimetableEntry, TimetableEntry, QAfterFilterCondition>
+      daysLabelBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'daysLabel',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<TimetableEntry, TimetableEntry, QAfterFilterCondition>
+      daysLabelStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'daysLabel',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<TimetableEntry, TimetableEntry, QAfterFilterCondition>
+      daysLabelEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'daysLabel',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<TimetableEntry, TimetableEntry, QAfterFilterCondition>
+      daysLabelContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'daysLabel',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<TimetableEntry, TimetableEntry, QAfterFilterCondition>
+      daysLabelMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'daysLabel',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<TimetableEntry, TimetableEntry, QAfterFilterCondition>
+      daysLabelIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'daysLabel',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<TimetableEntry, TimetableEntry, QAfterFilterCondition>
+      daysLabelIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'daysLabel',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<TimetableEntry, TimetableEntry, QAfterFilterCondition>
+      daysOfWeekElementEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'daysOfWeek',
         value: value,
       ));
     });
   }
 
   QueryBuilder<TimetableEntry, TimetableEntry, QAfterFilterCondition>
-      dayOfTheWeekGreaterThan(
+      daysOfWeekElementGreaterThan(
     int value, {
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         include: include,
-        property: r'dayOfTheWeek',
+        property: r'daysOfWeek',
         value: value,
       ));
     });
   }
 
   QueryBuilder<TimetableEntry, TimetableEntry, QAfterFilterCondition>
-      dayOfTheWeekLessThan(
+      daysOfWeekElementLessThan(
     int value, {
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.lessThan(
         include: include,
-        property: r'dayOfTheWeek',
+        property: r'daysOfWeek',
         value: value,
       ));
     });
   }
 
   QueryBuilder<TimetableEntry, TimetableEntry, QAfterFilterCondition>
-      dayOfTheWeekBetween(
+      daysOfWeekElementBetween(
     int lower,
     int upper, {
     bool includeLower = true,
@@ -637,12 +677,101 @@ extension TimetableEntryQueryFilter
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.between(
-        property: r'dayOfTheWeek',
+        property: r'daysOfWeek',
         lower: lower,
         includeLower: includeLower,
         upper: upper,
         includeUpper: includeUpper,
       ));
+    });
+  }
+
+  QueryBuilder<TimetableEntry, TimetableEntry, QAfterFilterCondition>
+      daysOfWeekLengthEqualTo(int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'daysOfWeek',
+        length,
+        true,
+        length,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<TimetableEntry, TimetableEntry, QAfterFilterCondition>
+      daysOfWeekIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'daysOfWeek',
+        0,
+        true,
+        0,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<TimetableEntry, TimetableEntry, QAfterFilterCondition>
+      daysOfWeekIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'daysOfWeek',
+        0,
+        false,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<TimetableEntry, TimetableEntry, QAfterFilterCondition>
+      daysOfWeekLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'daysOfWeek',
+        0,
+        true,
+        length,
+        include,
+      );
+    });
+  }
+
+  QueryBuilder<TimetableEntry, TimetableEntry, QAfterFilterCondition>
+      daysOfWeekLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'daysOfWeek',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<TimetableEntry, TimetableEntry, QAfterFilterCondition>
+      daysOfWeekLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'daysOfWeek',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
     });
   }
 
@@ -1081,6 +1210,16 @@ extension TimetableEntryQueryFilter
         includeLower: includeLower,
         upper: upper,
         includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<TimetableEntry, TimetableEntry, QAfterFilterCondition>
+      isHighPriorityEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'isHighPriority',
+        value: value,
       ));
     });
   }
@@ -1738,17 +1877,16 @@ extension TimetableEntryQuerySortBy
     });
   }
 
-  QueryBuilder<TimetableEntry, TimetableEntry, QAfterSortBy>
-      sortByDayOfTheWeek() {
+  QueryBuilder<TimetableEntry, TimetableEntry, QAfterSortBy> sortByDaysLabel() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'dayOfTheWeek', Sort.asc);
+      return query.addSortBy(r'daysLabel', Sort.asc);
     });
   }
 
   QueryBuilder<TimetableEntry, TimetableEntry, QAfterSortBy>
-      sortByDayOfTheWeekDesc() {
+      sortByDaysLabelDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'dayOfTheWeek', Sort.desc);
+      return query.addSortBy(r'daysLabel', Sort.desc);
     });
   }
 
@@ -1804,6 +1942,20 @@ extension TimetableEntryQuerySortBy
       sortByEndMinutesDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'endMinutes', Sort.desc);
+    });
+  }
+
+  QueryBuilder<TimetableEntry, TimetableEntry, QAfterSortBy>
+      sortByIsHighPriority() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isHighPriority', Sort.asc);
+    });
+  }
+
+  QueryBuilder<TimetableEntry, TimetableEntry, QAfterSortBy>
+      sortByIsHighPriorityDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isHighPriority', Sort.desc);
     });
   }
 
@@ -1901,17 +2053,16 @@ extension TimetableEntryQuerySortThenBy
     });
   }
 
-  QueryBuilder<TimetableEntry, TimetableEntry, QAfterSortBy>
-      thenByDayOfTheWeek() {
+  QueryBuilder<TimetableEntry, TimetableEntry, QAfterSortBy> thenByDaysLabel() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'dayOfTheWeek', Sort.asc);
+      return query.addSortBy(r'daysLabel', Sort.asc);
     });
   }
 
   QueryBuilder<TimetableEntry, TimetableEntry, QAfterSortBy>
-      thenByDayOfTheWeekDesc() {
+      thenByDaysLabelDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'dayOfTheWeek', Sort.desc);
+      return query.addSortBy(r'daysLabel', Sort.desc);
     });
   }
 
@@ -1979,6 +2130,20 @@ extension TimetableEntryQuerySortThenBy
   QueryBuilder<TimetableEntry, TimetableEntry, QAfterSortBy> thenByIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.desc);
+    });
+  }
+
+  QueryBuilder<TimetableEntry, TimetableEntry, QAfterSortBy>
+      thenByIsHighPriority() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isHighPriority', Sort.asc);
+    });
+  }
+
+  QueryBuilder<TimetableEntry, TimetableEntry, QAfterSortBy>
+      thenByIsHighPriorityDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isHighPriority', Sort.desc);
     });
   }
 
@@ -2064,10 +2229,17 @@ extension TimetableEntryQueryWhereDistinct
     });
   }
 
-  QueryBuilder<TimetableEntry, TimetableEntry, QDistinct>
-      distinctByDayOfTheWeek() {
+  QueryBuilder<TimetableEntry, TimetableEntry, QDistinct> distinctByDaysLabel(
+      {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'dayOfTheWeek');
+      return query.addDistinctBy(r'daysLabel', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<TimetableEntry, TimetableEntry, QDistinct>
+      distinctByDaysOfWeek() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'daysOfWeek');
     });
   }
 
@@ -2097,6 +2269,13 @@ extension TimetableEntryQueryWhereDistinct
       distinctByEndMinutes() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'endMinutes');
+    });
+  }
+
+  QueryBuilder<TimetableEntry, TimetableEntry, QDistinct>
+      distinctByIsHighPriority() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'isHighPriority');
     });
   }
 
@@ -2156,9 +2335,16 @@ extension TimetableEntryQueryProperty
     });
   }
 
-  QueryBuilder<TimetableEntry, int, QQueryOperations> dayOfTheWeekProperty() {
+  QueryBuilder<TimetableEntry, String, QQueryOperations> daysLabelProperty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'dayOfTheWeek');
+      return query.addPropertyName(r'daysLabel');
+    });
+  }
+
+  QueryBuilder<TimetableEntry, List<int>, QQueryOperations>
+      daysOfWeekProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'daysOfWeek');
     });
   }
 
@@ -2185,6 +2371,13 @@ extension TimetableEntryQueryProperty
   QueryBuilder<TimetableEntry, int, QQueryOperations> endMinutesProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'endMinutes');
+    });
+  }
+
+  QueryBuilder<TimetableEntry, bool, QQueryOperations>
+      isHighPriorityProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'isHighPriority');
     });
   }
 
