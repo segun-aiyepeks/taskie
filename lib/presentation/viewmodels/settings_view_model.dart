@@ -5,6 +5,7 @@ class SettingsViewModel extends ChangeNotifier {
   static const _keyName = 'user_name';
   static const _keyTheme = 'theme_mode';
   static const _keyOnboard = 'has_seen_onboarding';
+  static const _keyTutorial = 'has_seen_tutorial';
 
   final SharedPreferences _prefs;
 
@@ -12,6 +13,7 @@ class SettingsViewModel extends ChangeNotifier {
 
   String? get userName => _prefs.getString(_keyName);
   bool get hasSeenOnboarding => _prefs.getBool(_keyOnboard) ?? false;
+  bool get hasSeenTutorial => _prefs.getBool(_keyTutorial) ?? false;
 
   ThemeMode get themeMode {
     final value = _prefs.getString(_keyTheme);
@@ -53,5 +55,10 @@ class SettingsViewModel extends ChangeNotifier {
   Future<void> completeOnboarding() async {
     await _prefs.setBool(_keyOnboard, true);
     notifyListeners();
+  }
+
+  Future<void> completeTutorial() async {
+  await _prefs.setBool(_keyTutorial, true);
+  notifyListeners();
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:showcaseview/showcaseview.dart';
 import 'package:taskie/presentation/viewmodels/category_view_model.dart';
 import 'package:taskie/presentation/viewmodels/search_view_model.dart';
 import 'package:taskie/presentation/viewmodels/settings_view_model.dart';
@@ -10,29 +11,57 @@ import '../../../core/constants/app_enums.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/utils/date_utils.dart';
+import '../../../core/utils/tutorial_keys.dart';
 import '../../viewmodels/stats_viewmodel.dart';
 import '../widgets/add_task_sheet.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/task_card.dart';
 
-// ── Entry point ────────────────────────────────────────────────
-// HomeScreen's only job is to create SearchViewModel and scope it
-// to this tab. Everything else lives in _HomeScreenView below.
+// ── Entry point ──────────────────────────────────────────────────
+// HomeScreen wraps everything in ShowCaseWidget so any descendant
+// can call ShowCaseWidget.of(context).startShowCase([...]).
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => SearchViewModel(),
-      child: const _HomeScreenView(),
+    return ShowCaseWidget(
+      onFinish: () =>
+          context.read<SettingsViewModel>().completeTutorial(),
+      builder: (context) => ChangeNotifierProvider(
+        create: (_) => SearchViewModel(),
+        child: const _HomeScreenContent(),
+      ),
     );
   }
 }
 
-// ── Main view — sits below the SearchViewModel provider ────────
-class _HomeScreenView extends StatelessWidget {
-  const _HomeScreenView();
+// ── StatefulWidget so initState can trigger the tutorial ─────────
+class _HomeScreenContent extends StatefulWidget {
+  const _HomeScreenContent();
+
+  @override
+  State<_HomeScreenContent> createState() => _HomeScreenContentState();
+}
+
+class _HomeScreenContentState extends State<_HomeScreenContent> {
+  @override
+  void initState() {
+    super.initState();
+    // addPostFrameCallback ensures the widget tree is built
+    // before we try to start the showcase overlay
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final settingsVM = context.read<SettingsViewModel>();
+      if (!settingsVM.hasSeenTutorial) {
+        ShowCaseWidget.of(context).startShowCase([
+          TutorialKeys.searchIcon,
+          TutorialKeys.filterTabs,
+          TutorialKeys.taskCard,
+          TutorialKeys.addTask,
+        ]);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,8 +71,6 @@ class _HomeScreenView extends StatelessWidget {
     final catVM    = context.watch<CategoryViewModel>();
     final searchVM = context.watch<SearchViewModel>();
 
-    // Wire search input directly to the filtering logic in TaskViewModel.
-    // Reassigning every build is cheap — it's just a function reference.
     searchVM.onQueryChanged = taskVM.setSearchQuery;
 
     return Scaffold(
@@ -52,35 +79,34 @@ class _HomeScreenView extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
-            // ── Header (greeting + search icon + avatar) ───
             const _Header(),
-
-            // ── Search field OR filter tabs — never both ───
-            // AnimatedSwitcher swaps between the two based on
-            // whether search mode is active. The key: value
-            // change is what triggers the cross-fade animation.
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 200),
               child: searchVM.isActivity
                   ? const Padding(
                       key: ValueKey('search'),
                       padding: EdgeInsets.only(top: AppSizes.sm),
-                      child: _SearchField(),      // ← used here
+                      child: _SearchField(),
                     )
                   : Column(
                       key: const ValueKey('filters'),
                       children: [
-                        _FilterTabs(taskVM: taskVM),
+                        Showcase(
+                          key: TutorialKeys.filterTabs,
+                          title: 'Filter your tasks',
+                          description:
+                              'Switch between All, Today, Pending and Done to focus on what matters right now.',
+                          child: _FilterTabs(taskVM: taskVM),
+                        ),
                         if (catVM.categories.isNotEmpty)
-                          _CategoryChips(taskVM: taskVM, catVM: catVM),
+                          _CategoryChips(
+                            taskVM: taskVM,
+                            catVM: catVM,
+                          ),
                       ],
                     ),
             ),
-
             const SizedBox(height: AppSizes.sm),
-
-            // ── Task list ──────────────────────────────────
             Expanded(
               child: taskVM.filteredTasks.isEmpty
                   ? EmptyState(
@@ -92,16 +118,38 @@ class _HomeScreenView extends StatelessWidget {
                         bottom: AppSizes.xxl + AppSizes.xl,
                       ),
                       itemCount: taskVM.filteredTasks.length,
-                      itemBuilder: (_, i) =>
-                          TaskCard(task: taskVM.filteredTasks[i]),
+                      itemBuilder: (_, i) {
+                        final card =
+                            TaskCard(task: taskVM.filteredTasks[i]);
+                        // Only wrap the first card — wrapping every card
+                        // would stack 50 overlays on a long list
+                        if (i == 0) {
+                          return Showcase(
+                            key: TutorialKeys.taskCard,
+                            title: 'Your tasks',
+                            description:
+                                'Tap a task to view details and subtasks. '
+                                'Tap the checkbox to complete it.',
+                            child: card,
+                          );
+                        }
+                        return card;
+                      },
                     ),
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => showAddTaskSheet(context),
-        child: const Icon(Icons.add_rounded),
+      floatingActionButton: Showcase(
+        key: TutorialKeys.addTask,
+        title: 'Create a task',
+        description:
+            'Tap here to add a new task. Set its priority, '
+            'category and due date.',
+        child: FloatingActionButton(
+          onPressed: () => showAddTaskSheet(context),
+          child: const Icon(Icons.add_rounded),
+        ),
       ),
     );
   }
@@ -127,13 +175,9 @@ class _HomeScreenView extends StatelessWidget {
       TaskFilter.all       => 'Tap + to create your first task.',
     };
   }
-}
+} // ← THE MISSING BRACE THAT CAUSED EVERYTHING
 
-// ── Header ─────────────────────────────────────────────────────
-// Kept as a const-constructable widget so Flutter can skip
-// rebuilding it when unrelated state changes. It reads
-// SearchViewModel directly — this works because _Header is
-// rendered below the ChangeNotifierProvider in HomeScreen.
+// ── Header ───────────────────────────────────────────────────────
 class _Header extends StatelessWidget {
   const _Header();
 
@@ -151,8 +195,6 @@ class _Header extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
-          // ── Greeting row ─────────────────────────────────
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -165,27 +207,29 @@ class _Header extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-
-              // ── Search icon ────────────────────────────
-              // context.read is correct here — we're in a callback/
-              // gesture, not subscribing to rebuilds. Using watch
-              // here would be wasteful and cause extra rebuilds.
-              GestureDetector(
-                onTap: () => context.read<SearchViewModel>().activate(),
-                child: Padding(
-                  padding: const EdgeInsets.only(
-                    left: AppSizes.sm,
-                    right: AppSizes.md,
-                  ),
-                  child: Icon(
-                    Icons.search_rounded,
-                    size: 22,
-                    color: theme.colorScheme.onSurfaceVariant,
+              // Search icon wrapped in Showcase
+              Showcase(
+                key: TutorialKeys.searchIcon,
+                title: 'Search tasks',
+                description:
+                    'Tap here to search through all your tasks by '
+                    'title or description.',
+                child: GestureDetector(
+                  onTap: () =>
+                      context.read<SearchViewModel>().activate(),
+                  child: Padding(
+                    padding: const EdgeInsets.only(
+                      left: AppSizes.sm,
+                      right: AppSizes.md,
+                    ),
+                    child: Icon(
+                      Icons.search_rounded,
+                      size: 22,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
               ),
-
-              // ── Avatar → Settings ─────────────────────
               GestureDetector(
                 onTap: () => context.push('/settings'),
                 child: CircleAvatar(
@@ -203,10 +247,7 @@ class _Header extends StatelessWidget {
               ),
             ],
           ),
-
           const SizedBox(height: 2),
-
-          // ── Title row ────────────────────────────────────
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -226,8 +267,6 @@ class _Header extends StatelessWidget {
                 ),
             ],
           ),
-
-          // ── Progress bar ──────────────────────────────────
           if (statsVM.totalTasks > 0) ...[
             const SizedBox(height: AppSizes.sm),
             ClipRRect(
@@ -250,7 +289,7 @@ class _Header extends StatelessWidget {
   }
 }
 
-// ── Search field ───────────────────────────────────────────────
+// ── Search field ─────────────────────────────────────────────────
 class _SearchField extends StatelessWidget {
   const _SearchField();
 
@@ -260,18 +299,21 @@ class _SearchField extends StatelessWidget {
     final searchVM = context.watch<SearchViewModel>();
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSizes.pagePadding),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSizes.pagePadding,
+      ),
       child: Row(
         children: [
-
-          // ── Pill-shaped input container ───────────────
           Expanded(
             child: Container(
               height: 44,
-              padding: const EdgeInsets.symmetric(horizontal: AppSizes.md),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSizes.md,
+              ),
               decoration: BoxDecoration(
                 color: theme.colorScheme.surfaceVariant,
-                borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+                borderRadius:
+                    BorderRadius.circular(AppSizes.radiusFull),
               ),
               child: Row(
                 children: [
@@ -293,9 +335,6 @@ class _SearchField extends StatelessWidget {
                         hintStyle: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
-                        // These three explicitly override app_theme.dart's
-                        // global input decoration — we don't want the filled
-                        // background or the border inside this pill container.
                         border: InputBorder.none,
                         filled: false,
                         isDense: true,
@@ -303,8 +342,6 @@ class _SearchField extends StatelessWidget {
                       ),
                     ),
                   ),
-
-                  // ── Clear button ──────────────────────
                   if (searchVM.hasQuery)
                     GestureDetector(
                       onTap: searchVM.clearText,
@@ -318,10 +355,7 @@ class _SearchField extends StatelessWidget {
               ),
             ),
           ),
-
           const SizedBox(width: AppSizes.sm),
-
-          // ── Cancel button ─────────────────────────────
           GestureDetector(
             onTap: searchVM.deactivate,
             child: const Text(
@@ -339,7 +373,7 @@ class _SearchField extends StatelessWidget {
   }
 }
 
-// ── Filter tabs ────────────────────────────────────────────────
+// ── Filter tabs ──────────────────────────────────────────────────
 class _FilterTabs extends StatelessWidget {
   final TaskViewModel taskVM;
   const _FilterTabs({required this.taskVM});
@@ -348,7 +382,9 @@ class _FilterTabs extends StatelessWidget {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: AppSizes.pagePadding),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSizes.pagePadding,
+      ),
       child: Row(
         children: TaskFilter.values
             .map((f) => _FilterChip(
@@ -389,7 +425,9 @@ class _FilterChip extends StatelessWidget {
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 16, vertical: 8,
+          ),
           decoration: BoxDecoration(
             color: isActive
                 ? AppColors.primary
@@ -412,12 +450,15 @@ class _FilterChip extends StatelessWidget {
   }
 }
 
-// ── Category filter chips ──────────────────────────────────────
+// ── Category chips ───────────────────────────────────────────────
 class _CategoryChips extends StatelessWidget {
   final TaskViewModel     taskVM;
   final CategoryViewModel catVM;
 
-  const _CategoryChips({required this.taskVM, required this.catVM});
+  const _CategoryChips({
+    required this.taskVM,
+    required this.catVM,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -472,16 +513,16 @@ class _CatChip extends StatelessWidget {
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 12, vertical: 6,
+          ),
           decoration: BoxDecoration(
             color: isActive
                 ? color.withOpacity(0.15)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(AppSizes.radiusFull),
             border: Border.all(
-              color: isActive
-                  ? color
-                  : theme.colorScheme.outline,
+              color: isActive ? color : theme.colorScheme.outline,
             ),
           ),
           child: Row(

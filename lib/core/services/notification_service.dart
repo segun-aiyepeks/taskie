@@ -1,8 +1,8 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:taskie/core/router/app_router.dart';
-import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:timezone/data/latest.dart' as tz_data;
 import '../constants/app_strings.dart';
 
 class NotificationService {
@@ -27,7 +27,7 @@ class NotificationService {
     );
 
     // Initialize timezone data for zonedSchedule usage.
-    tz.initializeTimeZones();
+    tz_data.initializeTimeZones();
 
     // Create the notification channel on Android 8.0+.
     // Channels control sound, vibration, and importance — users can
@@ -137,6 +137,78 @@ class NotificationService {
   Future<void> cancelAll() async {
     await _plugin.cancelAll();
   }
+
+  // Schedules a weekly recurring notification for a high-priority
+// timetable entry. Fires every week on the same day at the same time.
+Future<void> scheduleWeeklyTimetableReminder({
+  required int    entryId,
+  required int    dayOfWeek,    // 1=Mon … 7=Sun
+  required String title,
+  required int    startMinutes, // minutes from midnight
+}) async {
+  final scheduledTime = _nextWeekdayTime(dayOfWeek, startMinutes);
+
+  // Skip if the next occurrence is in the past
+  if (scheduledTime.isBefore(tz.TZDateTime.now(tz.local))) return;
+
+  final androidDetails = AndroidNotificationDetails(
+    AppStrings.notifChannelId,
+    AppStrings.notifChannelName,
+    channelDescription: AppStrings.notifChannelDesc,
+    importance: Importance.high,
+    priority: Priority.high,
+    styleInformation: BigTextStyleInformation(
+      'Your high-priority schedule entry is starting now.',
+      contentTitle: title,
+    ),
+  );
+
+  // Use entryId * 1000 + dayOfWeek as notification ID.
+  // This lets each day of a multi-day entry have its own notification.
+  final notifId = entryId * 1000 + dayOfWeek;
+
+  await _plugin.zonedSchedule(
+    id: notifId,
+    title: '⭐ $title',
+    body: 'Your high-priority schedule entry is starting now.',
+    scheduledDate: scheduledTime,
+    notificationDetails: NotificationDetails(android: androidDetails),
+    payload: 'schedule:$entryId',
+    androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+    // This is the magic — makes it repeat every week on the same
+    // day and time without rescheduling manually
+    matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+  );
+}
+
+// Cancels all notifications for a timetable entry across all days
+Future<void> cancelTimetableNotification(int entryId) async {
+  // Cancel for all 7 possible days
+  for (int day = 1; day <= 7; day++) {
+    await _plugin.cancel(id: entryId * 1000 + day);
+  }
+}
+
+// Returns the next TZDateTime for a given weekday and time
+tz.TZDateTime _nextWeekdayTime(int dayOfWeek, int startMinutes) {
+  final now    = tz.TZDateTime.now(tz.local);
+  final hour   = startMinutes ~/ 60;
+  final minute = startMinutes % 60;
+
+  // Start from today at the target time
+  var scheduled = tz.TZDateTime(
+    tz.local, now.year, now.month, now.day, hour, minute,
+  );
+
+  // Advance day by day until we land on the right weekday
+  // and the time hasn't passed yet today
+  while (scheduled.weekday != dayOfWeek ||
+         scheduled.isBefore(now)) {
+    scheduled = scheduled.add(const Duration(days: 1));
+  }
+
+  return scheduled;
+}
 }
 
 // Global navigator key — declared here so _onNotificationTap can reach it.

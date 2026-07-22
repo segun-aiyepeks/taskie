@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/widgets.dart';
+import 'package:taskie/core/services/notification_service.dart';
 import 'package:taskie/data/models/timetable_entry.dart';
 import 'package:taskie/data/repositories/timetable_repository.dart';
 
@@ -51,12 +52,43 @@ class TimetableViewModel extends ChangeNotifier {
   }
 
   Future<void> addEntry(TimetableEntry entry) async {
-    await _repository.saveEntry(entry);
+  final id = await _repository.saveEntry(entry);
+
+  // Schedule weekly notification for each selected day
+  // if the entry is marked high priority
+  if (entry.isHighPriority) {
+    for (final day in entry.daysOfWeek) {
+      await NotificationService.instance.scheduleWeeklyTimetableReminder(
+        entryId:      id,
+        dayOfWeek:    day,
+        title:        entry.title,
+        startMinutes: entry.startMinutes,
+      );
+    }
   }
+}
 
   Future<void> deleteEntry(int id) async {
-    await _repository.deleteEntry(id);
+  // Always cancel all notifications for this entry before deleting
+  await NotificationService.instance.cancelTimetableNotification(id);
+  await _repository.deleteEntry(id);
+}
+
+  Future<void> updateEntry(TimetableEntry entry) async {
+  await _repository.saveEntry(entry);
+  // High priority notification update
+  await NotificationService.instance.cancelTimetableNotification(entry.id);
+  if (entry.isHighPriority) {
+    for (final day in entry.daysOfWeek) {
+      await NotificationService.instance.scheduleWeeklyTimetableReminder(
+        entryId:      entry.id,
+        dayOfWeek:    day,
+        title:        entry.title,
+        startMinutes: entry.startMinutes,
+      );
+    }
   }
+}
 
   @override
   void dispose() {

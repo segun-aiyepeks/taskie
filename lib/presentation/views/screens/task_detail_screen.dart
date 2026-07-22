@@ -358,9 +358,9 @@ class _MetaRow extends StatelessWidget {
 }
 
 class _SubtaskTile extends StatelessWidget {
-  final Subtasks        subtask;
-  final int            taskId;
-  final TaskViewModel  taskVM;
+  final Subtasks      subtask;
+  final int           taskId;
+  final TaskViewModel taskVM;
 
   const _SubtaskTile({
     required this.subtask,
@@ -371,60 +371,79 @@ class _SubtaskTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          // Checkbox
-          GestureDetector(
-            onTap: () => taskVM.toggleSubtask(taskId, subtask.subtaskId),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              width: 20, height: 20,
-              decoration: BoxDecoration(
-                color: subtask.isCompleted
-                    ? AppColors.primary
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(5),
-                border: Border.all(
-                  color: subtask.isCompleted
-                      ? AppColors.primary
-                      : theme.colorScheme.outline,
-                  width: 1.5,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          // Tap anywhere on the row to toggle — not just the checkbox
+          onTap: () => taskVM.toggleSubtask(taskId, subtask.subtaskId),
+          borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              vertical: AppSizes.sm, horizontal: 2,
+            ),
+            child: Row(
+              children: [
+                // Checkbox
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 22, height: 22,
+                  decoration: BoxDecoration(
+                    color: subtask.isCompleted
+                        ? AppColors.primary
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: subtask.isCompleted
+                          ? AppColors.primary
+                          : theme.colorScheme.outline,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: subtask.isCompleted
+                      ? const Icon(Icons.check_rounded,
+                          size: 14, color: Colors.white)
+                      : null,
                 ),
-              ),
-              child: subtask.isCompleted
-                  ? const Icon(Icons.check_rounded,
-                      size: 13, color: Colors.white)
-                  : null,
+                const SizedBox(width: 12),
+
+                // Title
+                Expanded(
+                  child: AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 200),
+                    style: (theme.textTheme.bodyMedium ?? const TextStyle())
+                        .copyWith(
+                      color: subtask.isCompleted
+                          ? theme.colorScheme.onSurfaceVariant
+                          : theme.colorScheme.onSurface,
+                      decoration: subtask.isCompleted
+                          ? TextDecoration.lineThrough
+                          : TextDecoration.none,
+                      decorationColor: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    child: Text(subtask.title),
+                  ),
+                ),
+
+                // Delete
+                GestureDetector(
+                  onTap: () => taskVM.deleteSubTask(taskId, subtask.subtaskId),
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Icon(
+                      Icons.close_rounded,
+                      size: 16,
+                      color: theme.colorScheme.onSurfaceVariant
+                          .withOpacity(0.5),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 12),
-          // Title
-          Expanded(
-            child: Text(
-              subtask.title,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: subtask.isCompleted
-                    ? theme.colorScheme.onSurfaceVariant
-                    : theme.colorScheme.onSurface,
-                decoration: subtask.isCompleted
-                    ? TextDecoration.lineThrough
-                    : null,
-                decorationColor: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-          // Delete subtask
-          GestureDetector(
-            onTap: () => taskVM.deleteSubTask(taskId, subtask.subtaskId),
-            child: Icon(
-              Icons.close_rounded,
-              size: 16,
-              color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

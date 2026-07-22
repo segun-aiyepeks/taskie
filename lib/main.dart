@@ -9,6 +9,9 @@ import 'package:taskie/data/models/task.dart';
 import 'package:taskie/data/models/timetable_entry.dart';
 import 'package:taskie/data/repositories/isar_task_repository.dart';
 import 'package:taskie/data/repositories/isar_timetable_repository.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tzlib;
+import 'package:flutter_timezone/flutter_timezone.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,6 +31,11 @@ Future<void> main() async {
 
   final prefs = await SharedPreferences.getInstance();
   final timeTableRepository = IsarTimetableRepository(isar);
+
+  // Timezone must be initialized before any scheduled notifications
+  tz.initializeTimeZones();
+  final timezone = await FlutterTimezone.getLocalTimezone();
+  tzlib.setLocalLocation(tzlib.getLocation(timezone.toString()));
 
   runApp(TaskieApp(repository: repository, prefs: prefs, timetableRepository: timeTableRepository,));
 }

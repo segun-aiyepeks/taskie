@@ -6,18 +6,18 @@ import '../../../data/models/timetable_entry.dart';
 class TimetableEntryCard extends StatelessWidget {
   final TimetableEntry entry;
   final VoidCallback   onDelete;
+  final VoidCallback   onEdit;
 
   const TimetableEntryCard({
     super.key,
     required this.entry,
     required this.onDelete,
+    required this.onEdit,
   });
 
   Color get _color {
     try {
-      return Color(
-        int.parse(entry.colorHex.replaceFirst('#', '0xFF')),
-      );
+      return Color(int.parse(entry.colorHex.replaceFirst('#', '0xFF')));
     } catch (_) {
       return AppColors.primary;
     }
@@ -30,10 +30,8 @@ class TimetableEntryCard extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(
-        horizontal: AppSizes.pagePadding,
-        vertical: 4,
+        horizontal: AppSizes.pagePadding, vertical: 4,
       ),
-      // Dismissible gives us swipe-to-delete for free
       child: Dismissible(
         key: ValueKey(entry.id),
         direction: DismissDirection.endToStart,
@@ -50,91 +48,130 @@ class TimetableEntryCard extends StatelessWidget {
             color: AppColors.error,
           ),
         ),
-        child: Container(
-          padding: const EdgeInsets.all(AppSizes.md),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
+        child: Material(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+          child: InkWell(
+            onTap: onEdit, // ← tap to edit
             borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-            border: Border.all(color: theme.colorScheme.outlineVariant),
-          ),
-          child: Row(
-            children: [
-              // Coloured left accent bar
-              Container(
-                width: 3,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(2),
+            child: Container(
+              padding: const EdgeInsets.all(AppSizes.md),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                border: Border.all(
+                  color: theme.colorScheme.outlineVariant,
                 ),
               ),
-              const SizedBox(width: AppSizes.md),
-
-              // Content
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      entry.title,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        color: theme.colorScheme.onSurface,
-                        fontWeight: FontWeight.w600,
-                      ),
+              child: Row(
+                children: [
+                  // Coloured accent bar
+                  Container(
+                    width: 3, height: 56,
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(2),
                     ),
-                    const SizedBox(height: 4),
-                    Row(
+                  ),
+                  const SizedBox(width: AppSizes.md),
+
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          Icons.access_time_rounded,
-                          size: 12,
-                          color: theme.colorScheme.onSurfaceVariant,
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                entry.title,
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  color: theme.colorScheme.onSurface,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            if (entry.isHighPriority)
+                              Padding(
+                                padding: const EdgeInsets.only(left: 6),
+                                child: Icon(
+                                  Icons.notifications_active_rounded,
+                                  size: 14,
+                                  color: AppColors.error,
+                                ),
+                              ),
+                          ],
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(height: 3),
+                        Row(
+                          children: [
+                            Icon(Icons.access_time_rounded,
+                                size: 12,
+                                color: theme.colorScheme.onSurfaceVariant),
+                            const SizedBox(width: 4),
+                            Text(
+                              entry.timeRange,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        // Shows which days this repeats on
                         Text(
-                          entry.timeRange,
+                          entry.daysLabel,
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
+                            color: color.withOpacity(0.8),
+                            fontWeight: FontWeight.w500,
+                            fontSize: 11,
                           ),
                         ),
+                        if (entry.note?.isNotEmpty ?? false) ...[
+                          const SizedBox(height: 3),
+                          Text(
+                            entry.note!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant
+                                  .withOpacity(0.75),
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
-                    if (entry.note?.isNotEmpty ?? false) ...[
-                      const SizedBox(height: 3),
-                      Text(
-                        entry.note!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant
-                              .withOpacity(0.75),
-                          fontStyle: FontStyle.italic,
+                  ),
+
+                  Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.1),
+                          borderRadius:
+                              BorderRadius.circular(AppSizes.radiusFull),
+                        ),
+                        child: Text(
+                          entry.durationLabel,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: color,
+                          ),
                         ),
                       ),
+                      const SizedBox(height: 6),
+                      Icon(Icons.edit_outlined,
+                          size: 14,
+                          color: theme.colorScheme.onSurfaceVariant
+                              .withOpacity(0.5)),
                     ],
-                  ],
-                ),
-              ),
-
-              // Duration badge
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10, vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-                ),
-                child: Text(
-                  entry.durationLabel,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: color,
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),

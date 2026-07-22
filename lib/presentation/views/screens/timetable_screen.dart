@@ -140,13 +140,17 @@ class TimetableScreen extends StatelessWidget {
                           ),
                           itemCount: timetableVM.entries.length,
                           itemBuilder: (_, i) {
-                            final entry = timetableVM.entries[i];
-                            return TimetableEntryCard(
-                              entry: entry,
-                              onDelete: () =>
-                                  timetableVM.deleteEntry(entry.id),
-                            );
-                          },
+                          final entry = timetableVM.entries[i];
+                          return TimetableEntryCard(
+                            entry: entry,
+                            onDelete: () => timetableVM.deleteEntry(entry.id),
+                            onEdit:   () => showAddEntrySheet(   // ← add this
+                              context,
+                              initialDay:    timetableVM.selectedDay,
+                              existingEntry: entry,
+                            ),
+                          );
+                        },
                         ),
             ),
           ],
