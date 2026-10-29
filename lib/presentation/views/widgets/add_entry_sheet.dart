@@ -264,7 +264,7 @@ class _AddEntrySheet extends StatelessWidget {
 
             const SizedBox(height: AppSizes.lg),
 
-            // High priority toggle (Fix 5)
+            // Reminder toggle (stored in the legacy isHighPriority field).
             Container(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSizes.md, vertical: AppSizes.sm,
@@ -295,7 +295,7 @@ class _AddEntrySheet extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'High priority',
+                          'Reminder',
                           style: theme.textTheme.titleSmall?.copyWith(
                             color: formVM.isHighPriority
                                 ? AppColors.error
@@ -304,7 +304,7 @@ class _AddEntrySheet extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          'Sends a notification at start time',
+                          'Rings at the start time on each selected day',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),

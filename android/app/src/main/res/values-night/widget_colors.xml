@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="widget_background">#1D2234</color>
+    <color name="widget_stroke">#343D59</color>
+    <color name="widget_text">#F4F6FD</color>
+    <color name="widget_muted">#B6C1D8</color>
+    <color name="widget_task_accent">#AFBAFF</color>
+    <color name="widget_schedule_accent">#7EDCCA</color>
+</resources>

@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:showcaseview/showcaseview.dart';
 import 'package:taskie/core/constants/app_strings.dart';
+import 'package:taskie/core/services/home_widget_service.dart';
+import 'package:taskie/presentation/views/widgets/home_widget_navigation.dart';
 import 'package:taskie/core/router/app_router.dart';
 import 'package:taskie/core/theme/app_theme.dart';
+import 'package:taskie/core/utils/tutorial_keys.dart';
 import 'package:taskie/data/repositories/isar_timetable_repository.dart';
 import 'package:taskie/data/repositories/task_repository.dart';
 import 'package:taskie/presentation/viewmodels/app_shell_viewmodel.dart';
@@ -17,20 +21,32 @@ class TaskieApp extends StatelessWidget {
   final TaskRepository repository;
   final SharedPreferences prefs;
   final IsarTimetableRepository timetableRepository;
-  const TaskieApp({super.key, required this.repository, required this.prefs, required this.timetableRepository});
+  const TaskieApp({
+    super.key,
+    required this.repository,
+    required this.prefs,
+    required this.timetableRepository,
+  });
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(
+          lazy: false,
+          create: (_) =>
+              HomeWidgetService(repository, timetableRepository)..start(),
+        ),
         ChangeNotifierProvider(create: (_) => TaskViewModel(repository)),
         ChangeNotifierProvider(create: (_) => CategoryViewModel(repository)),
         ChangeNotifierProvider(create: (_) => StatsViewmodel(repository)),
         ChangeNotifierProvider(create: (_) => AppShellViewModel()),
         ChangeNotifierProvider(create: (_) => SettingsViewModel(prefs)),
-        ChangeNotifierProvider(create: (_) => TimetableViewModel(timetableRepository))
+        ChangeNotifierProvider(
+          create: (_) => TimetableViewModel(timetableRepository),
+        ),
       ],
-      child: _TaskieMaterialApp()
+      child: _TaskieMaterialApp(),
     );
   }
 }
@@ -49,7 +65,58 @@ class _TaskieMaterialApp extends StatelessWidget {
       darkTheme: AppTheme.darkTheme,
       themeMode: settingsVM.themeMode,
       routerConfig: appRouter,
-      scaffoldMessengerKey: GlobalKey<ScaffoldMessengerState>()
+      builder: (context, child) => HomeWidgetNavigation(
+        router: appRouter,
+        child: _TaskieShowcaseScope(child: child ?? const SizedBox.shrink()),
+      ),
+      scaffoldMessengerKey: GlobalKey<ScaffoldMessengerState>(),
     );
+  }
+}
+
+/// Keeps one named showcase controller alive around the router's Navigator.
+/// A stable scope is required because the first-run tour spans several tabs.
+class _TaskieShowcaseScope extends StatefulWidget {
+  final Widget child;
+
+  const _TaskieShowcaseScope({required this.child});
+
+  @override
+  State<_TaskieShowcaseScope> createState() => _TaskieShowcaseScopeState();
+}
+
+class _TaskieShowcaseScopeState extends State<_TaskieShowcaseScope> {
+  late final ShowcaseView _showcaseView;
+
+  @override
+  void initState() {
+    super.initState();
+    _showcaseView = ShowcaseView.register(
+      scope: TutorialKeys.scope,
+      enableAutoScroll: true,
+      onFinish: _finishTutorial,
+      onDismiss: (_) => _finishTutorial(),
+      onStart: (_, key) {
+        final tabIndex = TutorialKeys.tabFor(key);
+        if (tabIndex != null && mounted) {
+          context.read<AppShellViewModel>().setIndex(tabIndex);
+        }
+      },
+    );
+  }
+
+  void _finishTutorial() {
+    if (!mounted) return;
+    context.read<SettingsViewModel>().completeTutorial();
+    context.read<AppShellViewModel>().setIndex(0);
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+
+  @override
+  void dispose() {
+    _showcaseView.unregister();
+    super.dispose();
   }
 }

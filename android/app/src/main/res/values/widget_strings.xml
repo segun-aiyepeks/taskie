@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_task_name">Taskie: Next task</string>
+    <string name="widget_schedule_name">Taskie: Next schedule</string>
+    <string name="widget_task_description">Your next unfinished task with a reminder time.</string>
+    <string name="widget_schedule_description">The next item in your weekly schedule.</string>
+    <string name="widget_task_heading">TASKIE · NEXT TASK</string>
+    <string name="widget_schedule_heading">TASKIE · NEXT SCHEDULE</string>
+    <string name="widget_task_preview">Your next timed task</string>
+    <string name="widget_schedule_preview">Your next schedule item</string>
+    <string name="widget_time_preview">Date · Time</string>
+    <string name="widget_no_task">No upcoming tasks</string>
+    <string name="widget_no_task_hint">Add a future date and time in Taskie.</string>
+    <string name="widget_no_schedule">No schedule yet</string>
+    <string name="widget_no_schedule_hint">Plan your week in Taskie.</string>
+    <string name="widget_open_task">Tap to open task →</string>
+    <string name="widget_open_schedule">Tap to view schedule →</string>
+    <string name="widget_open_app">Tap to open Taskie →</string>
+    <string name="widget_refresh">Refresh widget</string>
+    <string name="widget_today">Today</string>
+    <string name="widget_tomorrow">Tomorrow</string>
+</resources>

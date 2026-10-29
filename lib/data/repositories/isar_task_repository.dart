@@ -78,7 +78,14 @@ class IsarTaskRepository implements TaskRepository {
   //Deleting Category
   @override
   Future<void> deleteCategory(int id) async {
-    await _isar.writeTxn(() => _isar.collection<Category>().delete(id));
+    await _isar.writeTxn(() async {
+      final tasksWithCat = await _isar.collection<Task>().filter().categoryIdEqualTo(id).findAll();
+      for (final task in tasksWithCat) {
+        task.categoryId = 0;
+        await _isar.collection<Task>().put(task);
+      }
+      await _isar.collection<Category>().delete(id);
+    });
   }
    
   //Watching all categories
@@ -108,9 +115,8 @@ class IsarTaskRepository implements TaskRepository {
   //SEEDING
   @override
   Future<void> seeDefaultCategories() async{
-    // only seed on first launch
-    final count = await _isar.collection<Category>().count();
-    if(count > 0) return;
+    final collection = _isar.collection<Category>();
+    final existingCategories = await collection.where().findAll();
 
     final defaults = [
       Category()
@@ -128,9 +134,24 @@ class IsarTaskRepository implements TaskRepository {
       Category()
       ..name = 'Study'
       ..hexColor = '#8570C8'
-      ..iconName = 'book'
+      ..iconName = 'book',
+      Category()
+      ..name = 'Business'
+      ..hexColor = '#3E8E6D'
+      ..iconName = 'briefcase'
     ];
 
-    await _isar.writeTxn(() => _isar.collection<Category>().putAll(defaults));
+    final categoriesToAdd = <Category>[];
+    if (existingCategories.isEmpty) {
+      categoriesToAdd.addAll(defaults);
+    } else if (!existingCategories.any(
+      (category) => category.name.toLowerCase() == 'business',
+    )) {
+      categoriesToAdd.add(defaults.last);
+    }
+
+    if (categoriesToAdd.isNotEmpty) {
+      await _isar.writeTxn(() => collection.putAll(categoriesToAdd));
+    }
   }  
 }

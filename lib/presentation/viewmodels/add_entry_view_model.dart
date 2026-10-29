@@ -46,7 +46,9 @@ class AddEntryViewModel extends ChangeNotifier {
         _startMinutes   = existingEntry?.startMinutes ?? 9 * 60,
         _endMinutes     = existingEntry?.endMinutes   ?? 10 * 60,
         _colorHex       = existingEntry?.colorHex     ?? palette[0],
-        _isHighPriority = existingEntry?.isHighPriority ?? false,
+        // New schedule entries remind by default; existing entries preserve
+        // their saved reminder choice.
+        _isHighPriority = existingEntry?.isHighPriority ?? true,
         _showNote       = existingEntry?.note?.isNotEmpty ?? false {
     titleController.addListener(notifyListeners);
   }

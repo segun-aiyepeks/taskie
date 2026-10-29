@@ -8,6 +8,7 @@ import 'package:taskie/presentation/views/screens/settings_screen.dart';
 import 'package:taskie/presentation/views/screens/splash_screen.dart';
 import '../../presentation/views/screens/app_shell.dart';
 import '../../presentation/views/screens/task_detail_screen.dart';
+import '../../presentation/views/screens/task_archive_screen.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/splash',
@@ -16,28 +17,22 @@ final appRouter = GoRouter(
     final settingsVM = context.read<SettingsViewModel>();
     final loc = state.matchedLocation;
 
-    if(loc == '/splash') return null;
+    if (loc == '/splash') return null;
 
     final goingToOnboarding = loc == '/onboarding';
 
-    if(!settingsVM.hasSeenOnboarding && !goingToOnboarding) {
+    if (!settingsVM.hasSeenOnboarding && !goingToOnboarding) {
       return '/onboarding';
     }
-    if(settingsVM.hasSeenOnboarding && goingToOnboarding) {
+    if (settingsVM.hasSeenOnboarding && goingToOnboarding) {
       return '/';
     }
     return null;
   },
 
   routes: [
-    GoRoute(
-      path: '/splash',
-      builder: (_,_) => SplashScreen()
-    ),
-    GoRoute(
-      path: '/onboarding',
-      builder: (_, _) => OnboardingScreen() 
-    ),
+    GoRoute(path: '/splash', builder: (_, _) => SplashScreen()),
+    GoRoute(path: '/onboarding', builder: (_, _) => OnboardingScreen()),
 
     GoRoute(
       path: '/settings',
@@ -54,6 +49,7 @@ final appRouter = GoRouter(
       path: '/',
       builder: (_, _) => const AppShell(),
       routes: [
+        GoRoute(path: 'archive', builder: (_, _) => const TaskArchiveScreen()),
         GoRoute(
           path: 'task/:id',
           builder: (context, state) {

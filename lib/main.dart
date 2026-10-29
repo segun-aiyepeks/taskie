@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
@@ -9,12 +11,21 @@ import 'package:taskie/data/models/task.dart';
 import 'package:taskie/data/models/timetable_entry.dart';
 import 'package:taskie/data/repositories/isar_task_repository.dart';
 import 'package:taskie/data/repositories/isar_timetable_repository.dart';
-import 'package:timezone/data/latest.dart' as tz;
-import 'package:timezone/timezone.dart' as tzlib;
+import 'package:timezone/data/latest.dart' as tz_data;
+import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Timezone must be initialized before any scheduled notifications
+  tz_data.initializeTimeZones();
+  try {
+    final localTimezone = await FlutterTimezone.getLocalTimezone();
+    tz.setLocalLocation(tz.getLocation(localTimezone.identifier));
+  } catch (e) {
+    debugPrint('Could not set local timezone: $e');
+  }
 
   await NotificationService.instance.initialize();
 
@@ -32,10 +43,14 @@ Future<void> main() async {
   final prefs = await SharedPreferences.getInstance();
   final timeTableRepository = IsarTimetableRepository(isar);
 
-  // Timezone must be initialized before any scheduled notifications
-  tz.initializeTimeZones();
-  final timezone = await FlutterTimezone.getLocalTimezone();
-  tzlib.setLocalLocation(tzlib.getLocation(timezone.toString()));
+  runApp(TaskieApp(repository: repository, prefs: prefs, timetableRepository: timeTableRepository));
 
-  runApp(TaskieApp(repository: repository, prefs: prefs, timetableRepository: timeTableRepository,));
+  unawaited(() async {
+    final tasks = await isar.collection<Task>().where().findAll();
+    final timetableEntries = await isar.timetableEntrys.where().findAll();
+    await NotificationService.instance.restoreSavedReminders(
+      tasks: tasks,
+      timetableEntries: timetableEntries,
+    );
+  }());
 }

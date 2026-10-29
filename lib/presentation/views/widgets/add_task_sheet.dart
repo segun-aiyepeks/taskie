@@ -11,7 +11,11 @@ import '../../../core/constants/app_strings.dart';
 import '../../../core/utils/date_utils.dart';
 
 // ── Entry point — call this from any widget ───────────────────
-void showAddTaskSheet(BuildContext context, {Task? existingTask}) {
+void showAddTaskSheet(
+  BuildContext context, {
+  Task? existingTask,
+  DateTime? defaultDueDate,
+}) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -20,7 +24,10 @@ void showAddTaskSheet(BuildContext context, {Task? existingTask}) {
     // Provide AddTaskViewModel locally — it lives only while
     // the sheet is open and is disposed when it closes.
     builder: (_) => ChangeNotifierProvider(
-      create: (_) => AddTaskViewModel(existingTask: existingTask),
+      create: (_) => AddTaskViewModel(
+        existingTask: existingTask,
+        defaultDueDate: defaultDueDate,
+      ),
       child: const _AddTaskSheet(),
     ),
   );
@@ -32,9 +39,9 @@ class _AddTaskSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme  = Theme.of(context);
+    final theme = Theme.of(context);
     final formVM = context.watch<AddTaskViewModel>();
-    final catVM  = context.watch<CategoryViewModel>();
+    final catVM = context.watch<CategoryViewModel>();
 
     return Container(
       padding: EdgeInsets.only(
@@ -57,11 +64,11 @@ class _AddTaskSheet extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-
             // ── Drag handle ──────────────────────────────
             Center(
               child: Container(
-                width: 40, height: 4,
+                width: 40,
+                height: 4,
                 margin: const EdgeInsets.only(bottom: AppSizes.lg),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.outlineVariant,
@@ -100,9 +107,7 @@ class _AddTaskSheet extends StatelessWidget {
                 size: 16,
               ),
               label: Text(
-                formVM.showDescription
-                    ? 'Remove note'
-                    : 'Add a note',
+                formVM.showDescription ? 'Remove note' : 'Add a note',
                 style: const TextStyle(fontSize: 13),
               ),
               style: TextButton.styleFrom(
@@ -117,9 +122,7 @@ class _AddTaskSheet extends StatelessWidget {
                 controller: formVM.descriptionController,
                 maxLines: 3,
                 textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(
-                  hintText: 'Add a note...',
-                ),
+                decoration: const InputDecoration(hintText: 'Add a note...'),
               ),
             ],
 
@@ -143,10 +146,25 @@ class _AddTaskSheet extends StatelessWidget {
 
             const SizedBox(height: AppSizes.lg),
 
-            // ── Due date ──────────────────────────────────
-            _SectionLabel(label: 'Due date'),
+            // ── Reminder date and time ────────────────────
+            _SectionLabel(label: 'Reminder'),
+            Text(
+              'Choose when Taskie should sound your alarm.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
             const SizedBox(height: AppSizes.sm),
             _DueDatePicker(formVM: formVM),
+            if (formVM.dueDate == null) ...[
+              const SizedBox(height: AppSizes.sm),
+              Text(
+                'Without a reminder date, this task belongs to the day it was created.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
 
             const SizedBox(height: AppSizes.xl),
 
@@ -154,9 +172,7 @@ class _AddTaskSheet extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: formVM.canSave
-                    ? () => _save(context, formVM)
-                    : null,
+                onPressed: formVM.canSave ? () => _save(context, formVM) : null,
                 child: const Text(AppStrings.save),
               ),
             ),
@@ -167,30 +183,30 @@ class _AddTaskSheet extends StatelessWidget {
   }
 
   void _save(BuildContext context, AddTaskViewModel formVM) {
-  final taskVM = context.read<TaskViewModel>();
-  final desc   = formVM.descriptionController.text.trim();
+    final taskVM = context.read<TaskViewModel>();
+    final desc = formVM.descriptionController.text.trim();
+    final dueDate = formVM.fullDueDate;
 
-  if (formVM.isEditing) {
-    // Mutate the existing task object and save
-    final updated = formVM.existingTask!
-      ..title       = formVM.titleController.text.trim()
-      ..description = desc.isEmpty ? null : desc
-      ..priority    = formVM.priority
-      ..categoryId  = formVM.categoryId ?? 0
-      ..dueDate     = formVM.dueDate;
+    if (formVM.isEditing) {
+      final updated = formVM.existingTask!
+        ..title = formVM.titleController.text.trim()
+        ..description = desc.isEmpty ? null : desc
+        ..priority = formVM.priority
+        ..categoryId = formVM.categoryId ?? 0
+        ..dueDate = dueDate;
 
-    taskVM.updateTask(updated);
-  } else {
-    taskVM.addTask(
-      title:       formVM.titleController.text.trim(),
-      description: desc.isEmpty ? null : desc,
-      priority:    formVM.priority,
-      categoryId:  formVM.categoryId ?? 0,
-      dueDate:     formVM.dueDate,
-    );
-  }
+      taskVM.updateTask(updated);
+    } else {
+      taskVM.addTask(
+        title: formVM.titleController.text.trim(),
+        description: desc.isEmpty ? null : desc,
+        priority: formVM.priority,
+        categoryId: formVM.categoryId ?? 0,
+        dueDate: dueDate,
+      );
+    }
 
-  Navigator.pop(context);
+    Navigator.pop(context);
   }
 }
 
@@ -202,11 +218,11 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Text(
-        label,
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-        ),
-      );
+    label,
+    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+    ),
+  );
 }
 
 class _PriorityChip extends StatelessWidget {
@@ -218,7 +234,7 @@ class _PriorityChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isSelected = formVM.priority == priority;
-    final color      = Color(priority.colorValue);
+    final color = Color(priority.colorValue);
 
     return Padding(
       padding: const EdgeInsets.only(right: AppSizes.sm),
@@ -226,7 +242,7 @@ class _PriorityChip extends StatelessWidget {
         label: Text(priority.label),
         selected: isSelected,
         onSelected: (_) => formVM.setPriority(priority),
-        selectedColor: color.withOpacity(0.15),
+        selectedColor: color.withValues(alpha: 0.15),
         labelStyle: TextStyle(
           color: isSelected ? color : null,
           fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
@@ -255,10 +271,7 @@ class _CategoryDropdown extends StatelessWidget {
       items: [
         const DropdownMenuItem(value: null, child: Text('No category')),
         ...catVM.categories.map(
-          (cat) => DropdownMenuItem(
-            value: cat.id,
-            child: Text(cat.name),
-          ),
+          (cat) => DropdownMenuItem(value: cat.id, child: Text(cat.name)),
         ),
       ],
       onChanged: formVM.setCategoryId,
@@ -272,44 +285,96 @@ class _DueDatePicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme    = Theme.of(context);
-    final hasDue   = formVM.dueDate != null;
+    final theme = Theme.of(context);
+    final hasDue = formVM.dueDate != null;
+    final hasTime = formVM.dueTime != null;
 
-    return OutlinedButton.icon(
-      onPressed: () async {
-        final picked = await showDatePicker(
-          context: context,
-          initialDate: formVM.dueDate ?? DateTime.now(),
-          firstDate: DateTime.now().subtract(const Duration(days: 1)),
-          lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
-        );
-        if (picked != null) formVM.setDueDate(picked);
-      },
-      icon: Icon(
-        Icons.calendar_today_rounded,
-        size: 16,
-        color: hasDue
-            ? AppColors.primary
-            : theme.colorScheme.onSurfaceVariant,
-      ),
-      label: Text(
-        hasDue
-            ? DateHelper.format(formVM.dueDate!)
-            : 'Pick a date',
-        style: TextStyle(
-          color: hasDue
-              ? AppColors.primary
-              : theme.colorScheme.onSurfaceVariant,
-          fontWeight: hasDue ? FontWeight.w600 : FontWeight.w400,
+    return Wrap(
+      spacing: AppSizes.sm,
+      runSpacing: AppSizes.sm,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        OutlinedButton.icon(
+          onPressed: () async {
+            final today = DateUtils.dateOnly(DateTime.now());
+            final initial = DateUtils.dateOnly(formVM.dueDate ?? today);
+            final last = DateTime(today.year + 5, today.month, today.day);
+            final picked = await showDatePicker(
+              context: context,
+              initialDate: initial,
+              firstDate: initial.isBefore(today) ? initial : today,
+              lastDate: initial.isAfter(last) ? initial : last,
+            );
+            if (picked != null && context.mounted) formVM.setDueDate(picked);
+          },
+          icon: Icon(
+            Icons.calendar_today_rounded,
+            size: 16,
+            color: hasDue
+                ? AppColors.primary
+                : theme.colorScheme.onSurfaceVariant,
+          ),
+          label: Text(
+            hasDue
+                ? DateHelper.format(
+                    DateTime(
+                      formVM.dueDate!.year,
+                      formVM.dueDate!.month,
+                      formVM.dueDate!.day,
+                    ),
+                  )
+                : 'Pick a date',
+            style: TextStyle(
+              color: hasDue
+                  ? AppColors.primary
+                  : theme.colorScheme.onSurfaceVariant,
+              fontWeight: hasDue ? FontWeight.w600 : FontWeight.w400,
+            ),
+          ),
+          style: OutlinedButton.styleFrom(
+            side: BorderSide(
+              color: hasDue ? AppColors.primary : theme.colorScheme.outline,
+            ),
+          ),
         ),
-      ),
-      style: OutlinedButton.styleFrom(
-        side: BorderSide(
-          color: hasDue
-              ? AppColors.primary
-              : theme.colorScheme.outline,
+        OutlinedButton.icon(
+          onPressed: () async {
+            final picked = await showTimePicker(
+              context: context,
+              initialTime: formVM.dueTime ?? TimeOfDay.now(),
+            );
+            if (picked != null && context.mounted) formVM.setDueTime(picked);
+          },
+          icon: Icon(
+            Icons.access_time_rounded,
+            size: 16,
+            color: hasTime
+                ? AppColors.primary
+                : theme.colorScheme.onSurfaceVariant,
+          ),
+          label: Text(
+            hasTime ? formVM.dueTime!.format(context) : 'Pick a time',
+            style: TextStyle(
+              color: hasTime
+                  ? AppColors.primary
+                  : theme.colorScheme.onSurfaceVariant,
+              fontWeight: hasTime ? FontWeight.w600 : FontWeight.w400,
+            ),
+          ),
+          style: OutlinedButton.styleFrom(
+            side: BorderSide(
+              color: hasTime ? AppColors.primary : theme.colorScheme.outline,
+            ),
+          ),
         ),
-      ),
+        if (hasDue)
+          IconButton(
+            onPressed: () => formVM.setDueDate(null),
+            icon: const Icon(Icons.close_rounded, size: 18),
+            tooltip: 'Remove due date',
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+      ],
     );
   }
 }

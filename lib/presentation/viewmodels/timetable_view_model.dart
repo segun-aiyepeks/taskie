@@ -52,43 +52,34 @@ class TimetableViewModel extends ChangeNotifier {
   }
 
   Future<void> addEntry(TimetableEntry entry) async {
-  final id = await _repository.saveEntry(entry);
-
-  // Schedule weekly notification for each selected day
-  // if the entry is marked high priority
-  if (entry.isHighPriority) {
-    for (final day in entry.daysOfWeek) {
-      await NotificationService.instance.scheduleWeeklyTimetableReminder(
-        entryId:      id,
-        dayOfWeek:    day,
-        title:        entry.title,
-        startMinutes: entry.startMinutes,
-      );
-    }
+    final id = await _repository.saveEntry(entry);
+    await _syncReminder(entry, id);
   }
-}
 
   Future<void> deleteEntry(int id) async {
-  // Always cancel all notifications for this entry before deleting
-  await NotificationService.instance.cancelTimetableNotification(id);
-  await _repository.deleteEntry(id);
-}
+    await NotificationService.instance.cancelTimetableNotification(id);
+    await _repository.deleteEntry(id);
+  }
 
   Future<void> updateEntry(TimetableEntry entry) async {
-  await _repository.saveEntry(entry);
-  // High priority notification update
-  await NotificationService.instance.cancelTimetableNotification(entry.id);
-  if (entry.isHighPriority) {
+    await _repository.saveEntry(entry);
+    await _syncReminder(entry, entry.id);
+  }
+
+  Future<void> _syncReminder(TimetableEntry entry, int entryId) async {
+    final notifications = NotificationService.instance;
+    await notifications.cancelTimetableNotification(entryId);
+    if (!entry.isHighPriority) return;
+
     for (final day in entry.daysOfWeek) {
-      await NotificationService.instance.scheduleWeeklyTimetableReminder(
-        entryId:      entry.id,
-        dayOfWeek:    day,
-        title:        entry.title,
+      await notifications.scheduleWeeklyTimetableReminder(
+        entryId: entryId,
+        dayOfWeek: day,
+        title: entry.title,
         startMinutes: entry.startMinutes,
       );
     }
   }
-}
 
   @override
   void dispose() {

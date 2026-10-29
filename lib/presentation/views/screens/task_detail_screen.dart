@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:taskie/data/models/subtasks.dart';
+import 'package:taskie/data/models/task.dart';
 import 'package:taskie/presentation/viewmodels/category_view_model.dart';
 import 'package:taskie/presentation/viewmodels/task_detail_view_model.dart';
 import 'package:taskie/presentation/viewmodels/task_view_model.dart';
@@ -11,6 +12,7 @@ import '../../../core/constants/app_strings.dart';
 import '../../../core/utils/date_utils.dart';
 import '../widgets/add_task_sheet.dart';
 import '../widgets/priority_badge.dart';
+import '../widgets/task_status_badge.dart';
 
 class TaskDetailScreen extends StatelessWidget {
   final int taskId;
@@ -19,19 +21,17 @@ class TaskDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final taskVM = context.watch<TaskViewModel>();
-    final task   = taskVM.getTaskbyId(taskId);
+    final task = taskVM.getTaskbyId(taskId);
 
     // Task was deleted — go back immediately
     if (task == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => context.go('/'));
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final theme  = Theme.of(context);
-    final catVM  = context.watch<CategoryViewModel>();
-    final cat    = catVM.getCategorybyId(task.categoryId);
+    final theme = Theme.of(context);
+    final catVM = context.watch<CategoryViewModel>();
+    final cat = catVM.getCategorybyId(task.categoryId);
     final detailVM = context.watch<TaskDetailViewModel>();
 
     return Scaffold(
@@ -40,17 +40,14 @@ class TaskDetailScreen extends StatelessWidget {
         backgroundColor: theme.colorScheme.surface,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          onPressed: () => context.pop()
+          onPressed: () => context.pop(),
         ),
         actions: [
           // Edit button
           IconButton(
             icon: const Icon(Icons.edit_outlined),
             tooltip: 'Edit task',
-            onPressed: () => showAddTaskSheet(
-              context,
-              existingTask: task,
-            ),
+            onPressed: () => showAddTaskSheet(context, existingTask: task),
           ),
           // Delete button
           IconButton(
@@ -70,15 +67,35 @@ class TaskDetailScreen extends StatelessWidget {
           AppSizes.xxl,
         ),
         children: [
-
           // ── Status + Priority row ──────────────────────
-          Row(
+          Wrap(
+            spacing: AppSizes.sm,
+            runSpacing: AppSizes.sm,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               PriorityBadge(priority: task.priority, showLabel: true),
-              const SizedBox(width: AppSizes.sm),
-              _StatusChip(isCompleted: task.isCompleted),
+              TaskStatusBadge(task: task, now: taskVM.now),
             ],
           ),
+
+          if (task.isPreviousAt(taskVM.now)) ...[
+            const SizedBox(height: AppSizes.md),
+            Text(
+              'Previous task · ${DateHelper.fullDate(task.scheduledDay)}\n'
+              'Saved in Archive. You can still update its completion status or edit its date.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ] else if (task.isExpiredAt(taskVM.now)) ...[
+            const SizedBox(height: AppSizes.md),
+            Text(
+              'The due time has passed. Mark it complete or edit it to set a new time.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: AppColors.error,
+              ),
+            ),
+          ],
 
           const SizedBox(height: AppSizes.md),
 
@@ -87,9 +104,7 @@ class TaskDetailScreen extends StatelessWidget {
             task.title,
             style: theme.textTheme.headlineMedium?.copyWith(
               color: theme.colorScheme.onSurface,
-              decoration: task.isCompleted
-                  ? TextDecoration.lineThrough
-                  : null,
+              decoration: task.isCompleted ? TextDecoration.lineThrough : null,
               decorationColor: theme.colorScheme.onSurfaceVariant,
             ),
           ),
@@ -101,8 +116,8 @@ class TaskDetailScreen extends StatelessWidget {
             icon: Icons.access_time_rounded,
             label: task.dueDate != null
                 ? DateHelper.format(task.dueDate!)
-                : 'No due date',
-            color: task.isOverdue
+                : '${DateHelper.fullDate(task.scheduledDay)} · No reminder',
+            color: task.isExpiredAt(taskVM.now)
                 ? AppColors.error
                 : theme.colorScheme.onSurfaceVariant,
           ),
@@ -142,16 +157,14 @@ class TaskDetailScreen extends StatelessWidget {
                 title: task.subtasks.isEmpty
                     ? 'Subtasks'
                     : 'Subtasks  '
-                      '${task.completedSubtaskCount}/${task.subtasks.length}',
+                          '${task.completedSubtaskCount}/${task.subtasks.length}',
               ),
               TextButton.icon(
                 onPressed: detailVM.showInput
                     ? detailVM.closeInput
                     : detailVM.openInput,
                 icon: Icon(
-                  detailVM.showInput
-                      ? Icons.close_rounded
-                      : Icons.add_rounded,
+                  detailVM.showInput ? Icons.close_rounded : Icons.add_rounded,
                   size: 16,
                 ),
                 label: Text(
@@ -168,11 +181,8 @@ class TaskDetailScreen extends StatelessWidget {
 
           // Subtask list
           ...task.subtasks.map(
-            (subtask) => _SubtaskTile(
-              subtask: subtask,
-              taskId: task.id,
-              taskVM: taskVM,
-            ),
+            (subtask) =>
+                _SubtaskTile(subtask: subtask, taskId: task.id, taskVM: taskVM),
           ),
 
           // Inline add subtask input
@@ -196,12 +206,7 @@ class TaskDetailScreen extends StatelessWidget {
                 const SizedBox(width: AppSizes.sm),
                 IconButton.filled(
                   onPressed: detailVM.canAdd
-                      ? () => _saveSubtask(
-                            context,
-                            taskVM,
-                            detailVM,
-                            task.id,
-                          )
+                      ? () => _saveSubtask(context, taskVM, detailVM, task.id)
                       : null,
                   icon: const Icon(Icons.check_rounded, size: 18),
                   style: IconButton.styleFrom(
@@ -227,9 +232,7 @@ class TaskDetailScreen extends StatelessWidget {
                     : Icons.check_circle_outline_rounded,
                 size: 18,
               ),
-              label: Text(
-                task.isCompleted ? 'Reopen task' : 'Mark complete',
-              ),
+              label: Text(task.isCompleted ? 'Reopen task' : 'Mark complete'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: task.isCompleted
                     ? theme.colorScheme.onSurfaceVariant
@@ -258,11 +261,7 @@ class TaskDetailScreen extends StatelessWidget {
     detailVM.closeInput();
   }
 
-  void _confirmDelete(
-    BuildContext context,
-    TaskViewModel taskVM,
-    int taskId,
-  ) {
+  void _confirmDelete(BuildContext context, TaskViewModel taskVM, int taskId) {
     showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -291,49 +290,24 @@ class TaskDetailScreen extends StatelessWidget {
 
 // ── Private widgets ────────────────────────────────────────────
 
-class _StatusChip extends StatelessWidget {
-  final bool isCompleted;
-  const _StatusChip({required this.isCompleted});
-
-  @override
-  Widget build(BuildContext context) {
-    final color = isCompleted ? AppColors.success : AppColors.priorityMedium;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        isCompleted ? 'Completed' : 'Pending',
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
-      ),
-    );
-  }
-}
-
 class _SectionHeader extends StatelessWidget {
   final String title;
   const _SectionHeader({required this.title});
 
   @override
   Widget build(BuildContext context) => Text(
-        title,
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-          color: Theme.of(context).colorScheme.onSurface,
-          fontWeight: FontWeight.w600,
-        ),
-      );
+    title,
+    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+      color: Theme.of(context).colorScheme.onSurface,
+      fontWeight: FontWeight.w600,
+    ),
+  );
 }
 
 class _MetaRow extends StatelessWidget {
   final IconData icon;
-  final String   label;
-  final Color    color;
+  final String label;
+  final Color color;
 
   const _MetaRow({
     required this.icon,
@@ -343,23 +317,25 @@ class _MetaRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w500,
-            ),
+    children: [
+      Icon(icon, size: 16, color: color),
+      const SizedBox(width: 8),
+      Expanded(
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: color,
+            fontWeight: FontWeight.w500,
           ),
-        ],
-      );
+        ),
+      ),
+    ],
+  );
 }
 
 class _SubtaskTile extends StatelessWidget {
-  final Subtasks      subtask;
-  final int           taskId;
+  final Subtasks subtask;
+  final int taskId;
   final TaskViewModel taskVM;
 
   const _SubtaskTile({
@@ -382,14 +358,16 @@ class _SubtaskTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppSizes.radiusSm),
           child: Padding(
             padding: const EdgeInsets.symmetric(
-              vertical: AppSizes.sm, horizontal: 2,
+              vertical: AppSizes.sm,
+              horizontal: 2,
             ),
             child: Row(
               children: [
                 // Checkbox
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  width: 22, height: 22,
+                  width: 22,
+                  height: 22,
                   decoration: BoxDecoration(
                     color: subtask.isCompleted
                         ? AppColors.primary
@@ -403,8 +381,11 @@ class _SubtaskTile extends StatelessWidget {
                     ),
                   ),
                   child: subtask.isCompleted
-                      ? const Icon(Icons.check_rounded,
-                          size: 14, color: Colors.white)
+                      ? const Icon(
+                          Icons.check_rounded,
+                          size: 14,
+                          color: Colors.white,
+                        )
                       : null,
                 ),
                 const SizedBox(width: 12),
@@ -415,14 +396,14 @@ class _SubtaskTile extends StatelessWidget {
                     duration: const Duration(milliseconds: 200),
                     style: (theme.textTheme.bodyMedium ?? const TextStyle())
                         .copyWith(
-                      color: subtask.isCompleted
-                          ? theme.colorScheme.onSurfaceVariant
-                          : theme.colorScheme.onSurface,
-                      decoration: subtask.isCompleted
-                          ? TextDecoration.lineThrough
-                          : TextDecoration.none,
-                      decorationColor: theme.colorScheme.onSurfaceVariant,
-                    ),
+                          color: subtask.isCompleted
+                              ? theme.colorScheme.onSurfaceVariant
+                              : theme.colorScheme.onSurface,
+                          decoration: subtask.isCompleted
+                              ? TextDecoration.lineThrough
+                              : TextDecoration.none,
+                          decorationColor: theme.colorScheme.onSurfaceVariant,
+                        ),
                     child: Text(subtask.title),
                   ),
                 ),
@@ -435,8 +416,9 @@ class _SubtaskTile extends StatelessWidget {
                     child: Icon(
                       Icons.close_rounded,
                       size: 16,
-                      color: theme.colorScheme.onSurfaceVariant
-                          .withOpacity(0.5),
+                      color: theme.colorScheme.onSurfaceVariant.withValues(
+                        alpha: 0.5,
+                      ),
                     ),
                   ),
                 ),

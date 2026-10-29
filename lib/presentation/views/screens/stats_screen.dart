@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:showcaseview/showcaseview.dart';
+import 'package:taskie/core/utils/tutorial_keys.dart';
 import 'package:taskie/presentation/viewmodels/stats_viewmodel.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
@@ -35,54 +37,62 @@ class StatsScreen extends StatelessWidget {
 
               // ── Progress ring ──────────────────────────
               Center(
-                child: Column(
-                  children: [
-                    Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        SizedBox(
-                          width: 180, height: 180,
-                          child: CircularProgressIndicator(
-                            value: statsVM.completionRate,
-                            strokeWidth: 14,
-                            strokeCap: StrokeCap.round,
-                            backgroundColor:
-                                theme.colorScheme.surfaceContainerHighest,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              statsVM.completionRate >= 1.0
-                                  ? AppColors.success
-                                  : AppColors.primary,
+                child: Showcase(
+                  key: TutorialKeys.progressRing,
+                  scope: TutorialKeys.scope,
+                  title: 'Track your progress',
+                  description:
+                      'The ring shows your completed-task percentage and '
+                      'updates as you finish or reopen tasks.',
+                  child: Column(
+                    children: [
+                      Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          SizedBox(
+                            width: 180, height: 180,
+                            child: CircularProgressIndicator(
+                              value: statsVM.completionRate,
+                              strokeWidth: 14,
+                              strokeCap: StrokeCap.round,
+                              backgroundColor:
+                                  theme.colorScheme.surfaceContainerHighest,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                statsVM.completionRate >= 1.0
+                                    ? AppColors.success
+                                    : AppColors.primary,
+                              ),
                             ),
                           ),
-                        ),
-                        Column(
-                          children: [
-                            Text(
-                              '${(statsVM.completionRate * 100).toStringAsFixed(0)}%',
-                              style: theme.textTheme.displaySmall?.copyWith(
-                                color: theme.colorScheme.onSurface,
-                                fontWeight: FontWeight.w700,
+                          Column(
+                            children: [
+                              Text(
+                                '${(statsVM.completionRate * 100).toStringAsFixed(0)}%',
+                                style: theme.textTheme.displaySmall?.copyWith(
+                                  color: theme.colorScheme.onSurface,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
-                            ),
-                            Text(
-                              'complete',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
+                              Text(
+                                'complete',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSizes.md),
-                    Text(
-                      _motivationalMessage(statsVM.completionRate),
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+                            ],
+                          ),
+                        ],
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
+                      const SizedBox(height: AppSizes.md),
+                      Text(
+                        _motivationalMessage(statsVM.completionRate),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
                 ),
               ),
 
@@ -97,45 +107,53 @@ class StatsScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: AppSizes.md),
-              GridView.builder(
-                shrinkWrap: true,
-                physics: NeverScrollableScrollPhysics(),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: AppSizes.sm,
-                  mainAxisSpacing: AppSizes.sm,
-                  mainAxisExtent: 112
+              Showcase(
+                key: TutorialKeys.progressSummary,
+                scope: TutorialKeys.scope,
+                title: 'Read your task summary',
+                description:
+                    'See total, completed, pending and due-today counts. '
+                    'When you have tasks, the priority breakdown appears below.',
+                child: GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: AppSizes.sm,
+                    mainAxisSpacing: AppSizes.sm,
+                    mainAxisExtent: 112,
+                  ),
+                  itemCount: 4,
+                  itemBuilder: (context, i) {
+                    final cards = [
+                      _StatCard(
+                        label: 'Total',
+                        value: statsVM.totalTasks,
+                        color: AppColors.primary,
+                        icon: Icons.assignment_outlined,
+                      ),
+                      _StatCard(
+                        label: 'Completed',
+                        value: statsVM.completedTasks,
+                        color: AppColors.success,
+                        icon: Icons.check_circle_outlined,
+                      ),
+                      _StatCard(
+                        label: 'Pending',
+                        value: statsVM.pendingTasks,
+                        color: AppColors.priorityMedium,
+                        icon: Icons.pending_outlined,
+                      ),
+                      _StatCard(
+                        label: 'Due Today',
+                        value: statsVM.todayTasks,
+                        color: AppColors.priorityHigh,
+                        icon: Icons.today_outlined,
+                      ),
+                    ];
+                    return cards[i];
+                  },
                 ),
-                itemCount: 4, 
-                itemBuilder: (context, i) {
-                  final cards = [
-                    _StatCard(
-                      label: 'Total', 
-                      value: statsVM.totalTasks, 
-                      color: AppColors.primary, 
-                      icon: Icons.assignment_outlined
-                    ),
-                    _StatCard(
-                      label: 'Completed', 
-                      value: statsVM.completedTasks, 
-                      color: AppColors.success, 
-                      icon: Icons.check_circle_outlined
-                    ),
-                    _StatCard(
-                      label: 'Pending', 
-                      value: statsVM.pendingTasks, 
-                      color: AppColors.priorityMedium, 
-                      icon: Icons.pending_outlined
-                    ),
-                    _StatCard(
-                      label: 'Due Today', 
-                      value: statsVM.todayTasks, 
-                      color: AppColors.priorityHigh, 
-                      icon: Icons.today_outlined
-                    ),
-                  ];
-                  return cards[i];
-                }
               ),
 
               const SizedBox(height: AppSizes.xl),

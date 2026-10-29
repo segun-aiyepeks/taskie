@@ -62,8 +62,10 @@ class AppStrings {
   static const String noResultsTitle = 'No matching tasks';
 
   // Notifications
-  static const String notifChannelId   = 'taskie_reminders';
+  // Android does not allow changing a channel's sound after creation. The v2
+  // ID gives existing installs a fresh channel with the alarm ringtone.
+  static const String notifChannelId   = 'taskie_reminders_alarm_v2';
   static const String notifChannelName = 'Task Reminders';
-  static const String notifChannelDesc = 'Reminders for tasks with due dates';
+  static const String notifChannelDesc = 'Alarm-style sound for task and schedule reminders';
   static const String notifBody        = 'This task is due today.';
 }
