@@ -7,7 +7,9 @@ find **Taskie: Next task** or **Taskie: Next schedule**. Removing a widget from
 the home screen does not remove any tasks or schedules.
 
 - **Next task** shows the earliest unfinished task with a due time at or after
-  the current time. Completed, expired and undated tasks are excluded.
+  the current time. Completed tasks, past reminder times and undated tasks are
+  excluded. A task with a past reminder stays Pending in the app until its
+  scheduled day ends; the widget moves on to the next upcoming reminder.
 - **Next schedule** shows the next start across every selected repeat day,
   whether or not that entry's alarm is enabled. An entry that has started is
   replaced by the next upcoming start, including the following week.

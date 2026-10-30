@@ -63,9 +63,8 @@ extension TaskCalendar on Task {
   }
 
   bool isExpiredAt(DateTime now) {
-    if (isCompleted) return false;
-    final deadline = dueDate;
-    // Without a reminder time, the task expires when its calendar day ends.
-    return deadline == null ? isPreviousAt(now) : !deadline.isAfter(now);
+    // The time triggers the reminder; only the end of the scheduled local day
+    // expires an unfinished task. Older undated tasks use their creation day.
+    return !isCompleted && isPreviousAt(now);
   }
 }

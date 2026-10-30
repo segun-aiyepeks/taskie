@@ -81,7 +81,7 @@ void main() {
   );
 
   test(
-    'expiry starts at the deadline; completed tasks never become expired',
+    'expiry starts at the next local day; reminder time does not expire tasks',
     () {
       final deadline = DateTime(2026, 10, 28, 12);
       final pending = task(1, due: deadline);
@@ -89,7 +89,12 @@ void main() {
         pending.isExpiredAt(deadline.subtract(const Duration(microseconds: 1))),
         isFalse,
       );
-      expect(pending.isExpiredAt(deadline), isTrue);
+      expect(pending.isExpiredAt(deadline), isFalse);
+      expect(
+        pending.isExpiredAt(DateTime(2026, 10, 28, 23, 59, 59, 999, 999)),
+        isFalse,
+      );
+      expect(pending.isExpiredAt(DateTime(2026, 10, 29)), isTrue);
       expect(pending.isPreviousAt(deadline), isFalse);
       final completed = task(2, due: deadline, completed: true);
       expect(completed.isExpiredAt(DateTime(2026, 11, 1)), isFalse);
@@ -104,11 +109,12 @@ void main() {
     final localDeadline = DateTime(2026, 10, 28, 1);
     final utcTask = task(2, due: localDeadline.toUtc());
     expect(utcTask.scheduledDay, DateTime(2026, 10, 28));
-    expect(utcTask.isExpiredAt(localDeadline), isTrue);
+    expect(utcTask.isExpiredAt(localDeadline), isFalse);
+    expect(utcTask.isExpiredAt(DateTime(2026, 10, 29)), isTrue);
   });
 
   testWidgets(
-    'Today opens by default and all live filters exclude previous days',
+    'Today stays fresh and Expired explicitly shows unfinished archived tasks',
     (tester) async {
       final previous = task(1, due: DateTime(2026, 10, 27, 10));
       final previousDone = task(
@@ -117,19 +123,24 @@ void main() {
         completed: true,
       );
       final today = task(3);
-      final expired = task(4, due: DateTime(2026, 10, 28, 9));
+      final earlierToday = task(4, due: DateTime(2026, 10, 28, 9));
       final upcoming = task(5, due: DateTime(2026, 10, 29, 9));
       final done = task(6, due: DateTime(2026, 10, 28, 10), completed: true);
       final fixture = _Fixture(DateTime(2026, 10, 28, 12), [
         previous,
         previousDone,
         today,
-        expired,
+        earlierToday,
         upcoming,
         done,
       ]);
       addTearDown(fixture.dispose);
-      expect(fixture.vm.activeFilter, TaskFilter.today);
+      expect(fixture.vm.activeFilter, TaskFilter.all);
+      expect(
+        fixture.vm.filteredTasks.map((t) => t.id),
+        unorderedEquals([3, 4, 5, 6]),
+      );
+      fixture.vm.setFilter(TaskFilter.today);
       expect(
         fixture.vm.filteredTasks.map((t) => t.id),
         unorderedEquals([3, 4, 6]),
@@ -141,7 +152,7 @@ void main() {
         unorderedEquals([3, 4, 5, 6]),
       );
       fixture.vm.setFilter(TaskFilter.expired);
-      expect(fixture.vm.filteredTasks, [expired]);
+      expect(fixture.vm.filteredTasks, [previous]);
       fixture.vm.setFilter(TaskFilter.completed);
       expect(fixture.vm.filteredTasks, [done]);
       fixture.vm.setFilter(TaskFilter.pending);
@@ -180,7 +191,7 @@ void main() {
       fixture.vm.setFilter(TaskFilter.all);
       fixture.now = DateTime(2027, 1, 1);
       await tester.pump(const Duration(seconds: 1));
-      expect(fixture.vm.activeFilter, TaskFilter.today);
+      expect(fixture.vm.activeFilter, TaskFilter.all);
       expect(fixture.vm.filteredTasks, [planned]);
       expect(fixture.vm.archivedCount, 2);
       expect(
@@ -192,6 +203,56 @@ void main() {
       fixture.now = DateTime(2027, 1, 2);
       fixture.vm.didChangeAppLifecycleState(AppLifecycleState.resumed);
       expect(fixture.vm.filteredTasks, isEmpty);
+      expect(fixture.vm.archivedCount, 3);
+      await fixture.dispose();
+    },
+  );
+
+  testWidgets(
+    'home keeps future tasks grouped by date when today is empty and days change',
+    (tester) async {
+      final archived = task(1, due: DateTime(2026, 12, 30))..categoryId = 1;
+      final tomorrow = task(2, due: DateTime(2027, 1, 1, 10))..categoryId = 1;
+      final nextWeek = task(3, due: DateTime(2027, 1, 7, 9))..categoryId = 2;
+      final sameDay = task(4, due: DateTime(2027, 1, 1, 8))..categoryId = 1;
+      final fixture = _Fixture(DateTime(2026, 12, 31, 12), [
+        nextWeek,
+        archived,
+        tomorrow,
+        sameDay,
+      ]);
+      addTearDown(fixture.dispose);
+
+      expect(fixture.vm.todayCount, 0);
+      expect(fixture.vm.activeFilter, TaskFilter.all);
+      fixture.vm.setSortOption(TaskSortOption.dueDate);
+      expect(fixture.vm.filteredTasksByDate.keys, [
+        DateTime(2027, 1, 1),
+        DateTime(2027, 1, 7),
+      ]);
+      expect(fixture.vm.filteredTasksByDate[DateTime(2027, 1, 1)], [
+        sameDay,
+        tomorrow,
+      ]);
+      expect(fixture.vm.currentTasks.where((t) => t.categoryId == 1).length, 2);
+
+      fixture.vm.setFilterCategory(2);
+      expect(fixture.vm.filteredTasksByDate.values.single, [nextWeek]);
+      fixture.vm.setSearchQuery('missing');
+      expect(fixture.vm.filteredTasksByDate, isEmpty);
+      fixture.vm.clearFilters();
+      expect(fixture.vm.activeFilter, TaskFilter.all);
+      expect(fixture.vm.filteredTasksByDate.length, 2);
+
+      fixture.vm.setFilter(TaskFilter.today);
+      expect(fixture.vm.filteredTasksByDate, isEmpty);
+      fixture.now = DateTime(2027, 1, 2);
+      fixture.vm.didChangeAppLifecycleState(AppLifecycleState.resumed);
+      expect(fixture.vm.activeFilter, TaskFilter.all);
+      expect(fixture.vm.filteredTasksByDate, {
+        DateTime(2027, 1, 7): [nextWeek],
+      });
+      expect(fixture.vm.currentTasks.where((t) => t.categoryId == 1), isEmpty);
       expect(fixture.vm.archivedCount, 3);
       await fixture.dispose();
     },
@@ -220,7 +281,7 @@ void main() {
   );
 
   testWidgets(
-    'a visible task becomes Expired at its time without another database change',
+    'a visible task stays Pending after its time and becomes Expired at midnight',
     (tester) async {
       final item = task(1, due: DateTime(2026, 10, 28, 12));
       final fixture = _Fixture(DateTime(2026, 10, 28, 11, 59, 59), [item]);
@@ -241,8 +302,18 @@ void main() {
       expect(find.text('Pending'), findsOneWidget);
       fixture.now = DateTime(2026, 10, 28, 12);
       await tester.pump(const Duration(seconds: 1));
-      expect(find.text('Expired'), findsOneWidget);
+      expect(find.text('Pending'), findsOneWidget);
+      expect(find.text('Expired'), findsNothing);
       expect(fixture.vm.archivedCount, 0);
+      fixture.now = DateTime(2026, 10, 28, 23, 59, 59);
+      fixture.vm.refreshTime();
+      await tester.pump();
+      expect(find.text('Pending'), findsOneWidget);
+      fixture.now = DateTime(2026, 10, 29);
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('Expired'), findsOneWidget);
+      expect(fixture.vm.archivedCount, 1);
+      expect(fixture.vm.filteredTasks, isEmpty);
       await tester.pumpWidget(const SizedBox.shrink());
       await fixture.dispose();
     },

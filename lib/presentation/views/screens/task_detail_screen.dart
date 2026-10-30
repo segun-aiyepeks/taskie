@@ -87,14 +87,6 @@ class TaskDetailScreen extends StatelessWidget {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-          ] else if (task.isExpiredAt(taskVM.now)) ...[
-            const SizedBox(height: AppSizes.md),
-            Text(
-              'The due time has passed. Mark it complete or edit it to set a new time.',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppColors.error,
-              ),
-            ),
           ],
 
           const SizedBox(height: AppSizes.md),

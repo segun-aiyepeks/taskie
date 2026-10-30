@@ -14,7 +14,7 @@ class TimetableScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme      = Theme.of(context);
+    final theme = Theme.of(context);
     final timetableVM = context.watch<TimetableViewModel>();
 
     return Scaffold(
@@ -23,12 +23,13 @@ class TimetableScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             // ── Header ──────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(
-                AppSizes.pagePadding, AppSizes.lg,
-                AppSizes.pagePadding, AppSizes.md,
+                AppSizes.pagePadding,
+                AppSizes.lg,
+                AppSizes.pagePadding,
+                AppSizes.md,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -44,8 +45,8 @@ class TimetableScreen extends StatelessWidget {
                     timetableVM.entryCount == 0
                         ? timetableVM.selectedDayName
                         : '${timetableVM.selectedDayName} · '
-                          '${timetableVM.entryCount} '
-                          '${timetableVM.entryCount == 1 ? "entry" : "entries"}',
+                              '${timetableVM.entryCount} '
+                              '${timetableVM.entryCount == 1 ? "entry" : "entries"}',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -80,14 +81,16 @@ class TimetableScreen extends StatelessWidget {
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 180),
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8,
+                            horizontal: 16,
+                            vertical: 8,
                           ),
                           decoration: BoxDecoration(
                             color: isSelected
                                 ? AppColors.primary
                                 : theme.colorScheme.surfaceVariant,
-                            borderRadius:
-                                BorderRadius.circular(AppSizes.radiusFull),
+                            borderRadius: BorderRadius.circular(
+                              AppSizes.radiusFull,
+                            ),
                             border: isToday && !isSelected
                                 ? Border.all(color: AppColors.primary)
                                 : null,
@@ -102,14 +105,15 @@ class TimetableScreen extends StatelessWidget {
                                   color: isSelected
                                       ? Colors.white
                                       : isToday
-                                          ? AppColors.primary
-                                          : theme.colorScheme.onSurfaceVariant,
+                                      ? AppColors.primary
+                                      : theme.colorScheme.onSurfaceVariant,
                                 ),
                               ),
                               if (isToday) ...[
                                 const SizedBox(height: 3),
                                 Container(
-                                  width: 4, height: 4,
+                                  width: 4,
+                                  height: 4,
                                   decoration: BoxDecoration(
                                     color: isSelected
                                         ? Colors.white
@@ -142,33 +146,33 @@ class TimetableScreen extends StatelessWidget {
                 child: timetableVM.isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : timetableVM.entries.isEmpty
-                        ? EmptyState(
-                            icon: Icons.calendar_today_outlined,
-                            title: 'No entries for '
-                                '${timetableVM.selectedDayName}',
-                            subtitle:
-                                'Tap + to add a recurring schedule block.',
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.only(
-                              top: AppSizes.xs,
-                              bottom: AppSizes.xxl + AppSizes.xl,
+                    ? EmptyState(
+                        icon: Icons.calendar_today_outlined,
+                        title:
+                            'No entries for '
+                            '${timetableVM.selectedDayName}',
+                        subtitle:
+                            'Tap Add Schedule to create a recurring schedule block.',
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.only(
+                          top: AppSizes.xs,
+                          bottom: AppSizes.xxl + AppSizes.xl,
+                        ),
+                        itemCount: timetableVM.entries.length,
+                        itemBuilder: (_, i) {
+                          final entry = timetableVM.entries[i];
+                          return TimetableEntryCard(
+                            entry: entry,
+                            onDelete: () => timetableVM.deleteEntry(entry.id),
+                            onEdit: () => showAddEntrySheet(
+                              context,
+                              initialDay: timetableVM.selectedDay,
+                              existingEntry: entry,
                             ),
-                            itemCount: timetableVM.entries.length,
-                            itemBuilder: (_, i) {
-                              final entry = timetableVM.entries[i];
-                              return TimetableEntryCard(
-                                entry: entry,
-                                onDelete: () =>
-                                    timetableVM.deleteEntry(entry.id),
-                                onEdit: () => showAddEntrySheet(
-                                  context,
-                                  initialDay: timetableVM.selectedDay,
-                                  existingEntry: entry,
-                                ),
-                              );
-                            },
-                          ),
+                          );
+                        },
+                      ),
               ),
             ),
           ],
@@ -181,12 +185,12 @@ class TimetableScreen extends StatelessWidget {
         description:
             'Choose the repeat days and start/end times. Leave Reminder on '
             'to ring at the start time on each selected day.',
-        child: FloatingActionButton(
-          onPressed: () => showAddEntrySheet(
-            context,
-            initialDay: timetableVM.selectedDay,
-          ),
-          child: const Icon(Icons.add_rounded),
+        child: FloatingActionButton.extended(
+          heroTag: 'add-schedule',
+          onPressed: () =>
+              showAddEntrySheet(context, initialDay: timetableVM.selectedDay),
+          icon: const Icon(Icons.add_rounded),
+          label: const Text('Add Schedule'),
         ),
       ),
     );

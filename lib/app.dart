@@ -8,7 +8,7 @@ import 'package:taskie/presentation/views/widgets/home_widget_navigation.dart';
 import 'package:taskie/core/router/app_router.dart';
 import 'package:taskie/core/theme/app_theme.dart';
 import 'package:taskie/core/utils/tutorial_keys.dart';
-import 'package:taskie/data/repositories/isar_timetable_repository.dart';
+import 'package:taskie/data/repositories/timetable_repository.dart';
 import 'package:taskie/data/repositories/task_repository.dart';
 import 'package:taskie/presentation/viewmodels/app_shell_viewmodel.dart';
 import 'package:taskie/presentation/viewmodels/category_view_model.dart';
@@ -20,7 +20,7 @@ import 'package:taskie/presentation/viewmodels/timetable_view_model.dart';
 class TaskieApp extends StatelessWidget {
   final TaskRepository repository;
   final SharedPreferences prefs;
-  final IsarTimetableRepository timetableRepository;
+  final TimetableRepository timetableRepository;
   const TaskieApp({
     super.key,
     required this.repository,
@@ -46,13 +46,22 @@ class TaskieApp extends StatelessWidget {
           create: (_) => TimetableViewModel(timetableRepository),
         ),
       ],
-      child: _TaskieMaterialApp(),
+      // Own the tour above MaterialApp so onboarding/theme rebuilds cannot
+      // dispose an old controller after a replacement registers the same scope.
+      child: const _TaskieShowcaseScope(child: _TaskieMaterialApp()),
     );
   }
 }
 
-class _TaskieMaterialApp extends StatelessWidget {
+class _TaskieMaterialApp extends StatefulWidget {
   const _TaskieMaterialApp();
+
+  @override
+  State<_TaskieMaterialApp> createState() => _TaskieMaterialAppState();
+}
+
+class _TaskieMaterialAppState extends State<_TaskieMaterialApp> {
+  final _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
   @override
   Widget build(BuildContext context) {
@@ -67,9 +76,9 @@ class _TaskieMaterialApp extends StatelessWidget {
       routerConfig: appRouter,
       builder: (context, child) => HomeWidgetNavigation(
         router: appRouter,
-        child: _TaskieShowcaseScope(child: child ?? const SizedBox.shrink()),
+        child: child ?? const SizedBox.shrink(),
       ),
-      scaffoldMessengerKey: GlobalKey<ScaffoldMessengerState>(),
+      scaffoldMessengerKey: _scaffoldMessengerKey,
     );
   }
 }

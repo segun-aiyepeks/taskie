@@ -57,7 +57,7 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
     final taskVM = context.watch<TaskViewModel>();
     final catVM = context.watch<CategoryViewModel>();
     final searchVM = context.watch<SearchViewModel>();
-    final tasks = taskVM.filteredTasks;
+    final taskGroups = taskVM.filteredTasksByDate;
 
     searchVM.onQueryChanged = taskVM.setSearchQuery;
 
@@ -84,9 +84,9 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
                           scope: TutorialKeys.scope,
                           title: 'Find the tasks you need',
                           description:
-                              'Today starts fresh each day. All includes upcoming '
-                              'tasks; Expired shows unfinished tasks past their time. '
-                              'Previous days are kept in Archive.',
+                              'All shows today and upcoming tasks grouped by date. '
+                              'Choose Today to focus on this day. Expired shows '
+                              'unfinished tasks from past days, kept in Archive.',
                           child: _FilterTabs(taskVM: taskVM),
                         ),
                         if (catVM.categories.isNotEmpty)
@@ -103,21 +103,34 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
                 description:
                     'Tap a task to see its details, edit it or add subtasks. '
                     'Use the checkbox to mark it done. Expired means an unfinished '
-                    'task has passed its due time.',
-                child: tasks.isEmpty
+                    'task was left after its scheduled day ended.',
+                child: taskGroups.isEmpty
                     ? EmptyState(
                         title: _emptyTitle(taskVM),
                         subtitle: _emptySub(taskVM),
                       )
-                    : ListView.builder(
-                        padding: const EdgeInsets.only(
-                          bottom: AppSizes.xxl + AppSizes.xl,
-                        ),
-                        itemCount: tasks.length,
-                        itemBuilder: (_, i) => TaskCard(
-                          key: ValueKey(tasks[i].id),
-                          task: tasks[i],
-                        ),
+                    : CustomScrollView(
+                        slivers: [
+                          for (final group in taskGroups.entries) ...[
+                            SliverToBoxAdapter(
+                              child: _TaskDateHeader(
+                                date: group.key,
+                                now: taskVM.now,
+                                count: group.value.length,
+                              ),
+                            ),
+                            SliverList.builder(
+                              itemCount: group.value.length,
+                              itemBuilder: (_, i) => TaskCard(
+                                key: ValueKey(group.value[i].id),
+                                task: group.value[i],
+                              ),
+                            ),
+                          ],
+                          const SliverToBoxAdapter(
+                            child: SizedBox(height: AppSizes.xxl + AppSizes.xl),
+                          ),
+                        ],
                       ),
               ),
             ),
@@ -131,14 +144,16 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
         description:
             'Add a title, notes, priority and category. Set a due date and '
             'time to get a reminder. Open a task later to manage subtasks.',
-        child: FloatingActionButton(
+        child: FloatingActionButton.extended(
+          heroTag: 'add-task',
           onPressed: () => showAddTaskSheet(
             context,
             defaultDueDate: taskVM.activeFilter == TaskFilter.today
                 ? DateTime.now()
                 : null,
           ),
-          child: const Icon(Icons.add_rounded),
+          icon: const Icon(Icons.add_rounded),
+          label: const Text('Add Task'),
         ),
       ),
     );
@@ -150,7 +165,7 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
       TaskFilter.today => 'Nothing due today',
       TaskFilter.pending => 'All caught up!',
       TaskFilter.completed => 'No completed tasks yet',
-      TaskFilter.all => 'No tasks yet',
+      TaskFilter.all => 'No current or upcoming tasks',
       TaskFilter.expired => 'No expired tasks',
     };
   }
@@ -161,17 +176,77 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
     }
     return switch (taskVM.activeFilter) {
       TaskFilter.today =>
-        'A fresh day. Tap + to add a task; previous days are in Archive.',
-      TaskFilter.pending => 'Tap + to create your first task.',
+        'A fresh day. Tap Add Task; previous days are in Archive.',
+      TaskFilter.pending => 'Tap Add Task to create your first task.',
       TaskFilter.completed => 'Complete a task and it will show here.',
-      TaskFilter.all => 'Tap + to create your first task.',
+      TaskFilter.all =>
+        'Tap Add Task to plan today or a future date. Previous days are in Archive.',
       TaskFilter.expired =>
-        'Unfinished tasks appear here when their due time passes.',
+        'Unfinished tasks appear here after their scheduled day ends.',
     };
   }
 } // ← THE MISSING BRACE THAT CAUSED EVERYTHING
 
 // ── Header ───────────────────────────────────────────────────────
+class _TaskDateHeader extends StatelessWidget {
+  final DateTime date;
+  final DateTime now;
+  final int count;
+
+  const _TaskDateHeader({
+    required this.date,
+    required this.now,
+    required this.count,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = DateTime(now.year, now.month, now.day + 1);
+    final relativeDay = date == today
+        ? 'Today'
+        : date == tomorrow
+        ? 'Tomorrow'
+        : null;
+    final dateLabel = DateHelper.fullDate(date);
+
+    return Semantics(
+      header: true,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSizes.pagePadding,
+          AppSizes.md,
+          AppSizes.pagePadding,
+          AppSizes.sm,
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                relativeDay == null ? dateLabel : '$relativeDay · $dateLabel',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: date == today
+                      ? AppColors.primary
+                      : theme.colorScheme.onSurface,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSizes.sm),
+            Text(
+              '$count ${count == 1 ? "task" : "tasks"}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _Header extends StatelessWidget {
   const _Header();
 

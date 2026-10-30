@@ -20,7 +20,7 @@ class TaskViewModel extends ChangeNotifier with WidgetsBindingObserver {
   String? _error;
 
   //Filter & Sort State
-  TaskFilter _activeFilter = TaskFilter.today;
+  TaskFilter _activeFilter = TaskFilter.all;
   int? _filterCategoryId;
   String _searchQuery = '';
   TaskSortOption _sortOption = TaskSortOption.createdAt;
@@ -92,11 +92,11 @@ class TaskViewModel extends ChangeNotifier with WidgetsBindingObserver {
   int get todayCount => todayTasks.length;
   int get todayCompletedCount => todayTasks.where((t) => t.isCompleted).length;
 
-  /// Refresh on resume as well as at the next deadline or local midnight.
+  /// Refresh on resume and at local midnight, when task days change.
   void refreshTime() {
     final currentTime = _clock().toLocal();
     if (!DateUtils.isSameDay(_now, currentTime)) {
-      _activeFilter = TaskFilter.today;
+      _activeFilter = TaskFilter.all;
     }
     _now = currentTime;
     _scheduleCalendarRefresh();
@@ -105,16 +105,7 @@ class TaskViewModel extends ChangeNotifier with WidgetsBindingObserver {
 
   void _scheduleCalendarRefresh() {
     _calendarTimer?.cancel();
-    var nextChange = DateTime(_now.year, _now.month, _now.day + 1);
-    for (final task in _allTasks) {
-      final due = task.dueDate;
-      if (task.isPending &&
-          due != null &&
-          due.isAfter(_now) &&
-          due.isBefore(nextChange)) {
-        nextChange = due;
-      }
-    }
+    final nextChange = DateTime(_now.year, _now.month, _now.day + 1);
     _calendarTimer = Timer(nextChange.difference(_now), refreshTime);
   }
 
@@ -134,7 +125,7 @@ class TaskViewModel extends ChangeNotifier with WidgetsBindingObserver {
       TaskFilter.pending => activeTasks.where((t) => t.isPending).toList(),
       TaskFilter.completed => activeTasks.where((t) => t.isCompleted).toList(),
       TaskFilter.expired =>
-        activeTasks.where((t) => t.isExpiredAt(_now)).toList(),
+        _allTasks.where((t) => t.isExpiredAt(_now)).toList(),
     };
 
     //Step 2: apply category filter
@@ -176,6 +167,16 @@ class TaskViewModel extends ChangeNotifier with WidgetsBindingObserver {
     return tasks;
   }
 
+  /// Keep dates chronological while retaining the selected sort within a day.
+  Map<DateTime, List<Task>> get filteredTasksByDate {
+    final groups = <DateTime, List<Task>>{};
+    for (final task in filteredTasks) {
+      (groups[task.scheduledDay] ??= []).add(task);
+    }
+    final dates = groups.keys.toList()..sort();
+    return {for (final date in dates) date: groups[date]!};
+  }
+
   //Filter Controls
   void setFilter(TaskFilter filter) {
     _activeFilter = filter;
@@ -198,7 +199,7 @@ class TaskViewModel extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   void clearFilters() {
-    _activeFilter = TaskFilter.today;
+    _activeFilter = TaskFilter.all;
     _filterCategoryId = null;
     _searchQuery = '';
     _sortOption = TaskSortOption.createdAt;

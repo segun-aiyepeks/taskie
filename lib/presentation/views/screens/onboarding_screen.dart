@@ -26,7 +26,7 @@ class _OnboardingView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final obVM  = context.watch<OnboardingViewModel>();
+    final obVM = context.watch<OnboardingViewModel>();
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
@@ -36,14 +36,18 @@ class _OnboardingView extends StatelessWidget {
             // ── Logo, top-left ───────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(
-                AppSizes.pagePadding, AppSizes.md, AppSizes.pagePadding, 0,
+                AppSizes.pagePadding,
+                AppSizes.md,
+                AppSizes.pagePadding,
+                0,
               ),
               child: Row(
                 children: [
                   Image.asset(
-                  'assets/icons/logo_mark.png',
-                  width: 28, height: 28,
-                ),
+                    'assets/icons/logo_mark.png',
+                    width: 28,
+                    height: 28,
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     AppStrings.appName,
@@ -121,8 +125,7 @@ class _OnboardingView extends StatelessWidget {
                       color: obVM.currentPage == i
                           ? AppColors.primary
                           : theme.colorScheme.surfaceContainerHighest,
-                      borderRadius:
-                          BorderRadius.circular(AppSizes.radiusFull),
+                      borderRadius: BorderRadius.circular(AppSizes.radiusFull),
                     ),
                   ),
                 ),
@@ -132,8 +135,10 @@ class _OnboardingView extends StatelessWidget {
             // ── Bottom button ────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(
-                AppSizes.pagePadding, 0,
-                AppSizes.pagePadding, AppSizes.lg,
+                AppSizes.pagePadding,
+                0,
+                AppSizes.pagePadding,
+                AppSizes.lg,
               ),
               child: SizedBox(
                 width: double.infinity,
@@ -141,9 +146,7 @@ class _OnboardingView extends StatelessWidget {
                   onPressed: () => obVM.isLastPage
                       ? _finish(context, obVM)
                       : obVM.onNextPage(),
-                  child: Text(
-                    obVM.isLastPage ? AppStrings.getStarted : 'Next',
-                  ),
+                  child: Text(obVM.isLastPage ? AppStrings.getStarted : 'Next'),
                 ),
               ),
             ),
@@ -153,25 +156,25 @@ class _OnboardingView extends StatelessWidget {
     );
   }
 
-  void _skip(BuildContext context) {
-    context.read<SettingsViewModel>().completeOnboarding();
-    context.go('/');
+  Future<void> _skip(BuildContext context) async {
+    await context.read<SettingsViewModel>().completeOnboarding();
+    if (context.mounted) context.go('/');
   }
 
-  void _finish(BuildContext context, OnboardingViewModel obVM) {
+  Future<void> _finish(BuildContext context, OnboardingViewModel obVM) async {
     final settingsVM = context.read<SettingsViewModel>();
     final name = obVM.nameController.text.trim();
-    if (name.isNotEmpty) settingsVM.setUserName(name);
-    settingsVM.completeOnboarding();
-    context.go('/');
+    if (name.isNotEmpty) await settingsVM.setUserName(name);
+    await settingsVM.completeOnboarding();
+    if (context.mounted) context.go('/');
   }
 }
 
 // ── Intro slide ──────────────────────────────────────────────
 class _IntroPage extends StatelessWidget {
   final IconData icon;
-  final String   title;
-  final String   subtitle;
+  final String title;
+  final String subtitle;
 
   const _IntroPage({
     required this.icon,
@@ -202,7 +205,8 @@ class _IntroPage extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 120, height: 120,
+              width: 120,
+              height: 120,
               decoration: BoxDecoration(
                 color: AppColors.primary.withOpacity(0.1),
                 shape: BoxShape.circle,
@@ -240,7 +244,7 @@ class _NamePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final obVM  = context.watch<OnboardingViewModel>();
+    final obVM = context.watch<OnboardingViewModel>();
 
     return SingleChildScrollView(
       physics: const ClampingScrollPhysics(),
@@ -257,7 +261,8 @@ class _NamePage extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 120, height: 120,
+              width: 120,
+              height: 120,
               decoration: BoxDecoration(
                 color: AppColors.primary.withOpacity(0.1),
                 shape: BoxShape.circle,
